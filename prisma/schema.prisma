@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER
+// ============================================
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  phone       String?
+  fullName    String   @map("full_name")
+  role        String   @default("PATIENT")
+  password    String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  orders        Order[]
+  prescriptions Prescription[]
+  addresses     Address[]
+  cart          Cart?
+  consultations Consultation[]
+
+  reviewedPrescriptions Prescription[] @relation("PharmacistReviews")
+
+  @@map("users")
+}
+
+// ============================================
+// PRODUCT & CATEGORY
+// ============================================
+model Category {
+  id       String  @id @default(uuid())
+  name     String
+  slug     String  @unique
+  icon     String?
+  parentId String? @map("parent_id")
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id                   String  @id @default(uuid())
+  nameGeneric          String  @map("name_generic")
+  nameBrand            String? @map("name_brand")
+  slug                 String  @unique
+  description          String
+  indications          String?
+  dosageGuidance       String? @map("dosage_guidance")
+  warnings             String?
+  storage              String?
+  price                Float
+  categoryId           String  @map("category_id")
+  requiresPrescription Boolean @default(false) @map("requires_prescription")
+  stockQty             Int     @default(0) @map("stock_qty")
+  images               String  @default("[]")
+  nafdacNumber         String? @map("nafdac_number")
+  brand                String?
+  isActive             Boolean @default(true) @map("is_active")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  category   Category    @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+// ============================================
+// ORDER
+// ============================================
+model Order {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  status        String   @default("PENDING")
+  subtotal      Float
+  deliveryFee   Float    @default(0) @map("delivery_fee")
+  total         Float
+  addressId     String?  @map("address_id")
+  paymentRef    String?  @map("payment_ref")
+  paymentStatus String   @default("PENDING") @map("payment_status")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User        @relation(fields: [userId], references: [id])
+  address       Address?    @relation(fields: [addressId], references: [id])
+  items         OrderItem[]
+  prescriptions Prescription[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String @map("order_id")
+  productId String @map("product_id")
+  quantity  Int
+  unitPrice Float  @map("unit_price")
+  snapshot  String @default("{}")
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+// ============================================
+// PRESCRIPTION
+// ============================================
+model Prescription {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  orderId        String?   @map("order_id")
+  fileUrl        String    @map("file_url")
+  patientName    String?   @map("patient_name")
+  prescriberName String?   @map("prescriber_name")
+  status         String    @default("PENDING")
+  pharmacistId   String?   @map("pharmacist_id")
+  reviewNote     String?   @map("review_note")
+  submittedAt    DateTime  @default(now()) @map("submitted_at")
+  reviewedAt     DateTime? @map("reviewed_at")
+
+  user       User   @relation(fields: [userId], references: [id])
+  order      Order? @relation(fields: [orderId], references: [id])
+  pharmacist User?  @relation("PharmacistReviews", fields: [pharmacistId], references: [id])
+
+  @@map("prescriptions")
+}
+
+// ============================================
+// ADDRESS
+// ============================================
+model Address {
+  id        String  @id @default(uuid())
+  userId    String  @map("user_id")
+  label     String  @default("Home")
+  street    String
+  city      String
+  state     String
+  landmark  String?
+  isDefault Boolean @default(false) @map("is_default")
+
+  user   User    @relation(fields: [userId], references: [id])
+  orders Order[]
+
+  @@map("addresses")
+}
+
+// ============================================
+// CART
+// ============================================
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  items     String   @default("[]")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("carts")
+}
+
+// ============================================
+// CONSULTATION
+// ============================================
+model Consultation {
+  id             String   @id @default(uuid())
+  userId         String?  @map("user_id")
+  whatsappNumber String   @map("whatsapp_number")
+  topic          String
+  status         String   @default("PENDING")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("consultations")
+}
