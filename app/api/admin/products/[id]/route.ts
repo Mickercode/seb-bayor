@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAdminSession } from '@/lib/admin-auth'
 
+export const dynamic = 'force-dynamic'
+
 // Update product fields
 export async function PATCH(
   request: NextRequest,

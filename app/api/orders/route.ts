@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth'
 import { getDeliveryFee } from '@/lib/delivery-fees'
 import { sendOrderConfirmation } from '@/lib/email'
 
+export const dynamic = 'force-dynamic'
+
 // Create a new order
 export async function POST(request: NextRequest) {
   try {

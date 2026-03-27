@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/auth'
 import { sendOrderStatusUpdate } from '@/lib/email'
 
+export const dynamic = 'force-dynamic'
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
