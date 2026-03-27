@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { getDeliveryFee } from '@/lib/delivery-fees'
+import { sendOrderConfirmation } from '@/lib/email'
 
 // Create a new order
 export async function POST(request: NextRequest) {
@@ -73,6 +74,20 @@ export async function POST(request: NextRequest) {
       },
       include: { items: true },
     })
+
+    // Clear the server-side cart after order is placed
+    await prisma.cart.upsert({
+      where: { userId: session.userId },
+      create: { userId: session.userId, items: '[]' },
+      update: { items: '[]' },
+    })
+
+    // Send order confirmation email (non-blocking)
+    sendOrderConfirmation(session.email, {
+      id: order.id,
+      total,
+      itemCount: orderItems.length,
+    }).catch(() => {})
 
     return NextResponse.json({ success: true, order })
   } catch (error) {

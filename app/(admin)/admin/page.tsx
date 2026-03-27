@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
+import { getAdminSession } from '@/lib/admin-auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -27,16 +27,16 @@ function formatDate(date: Date) {
 }
 
 export default async function AdminDashboardPage() {
-  const session = await getSession();
-  if (!session || !['PHARMACIST', 'ADMIN'].includes(session.role)) {
-    redirect('/auth/login');
+  const session = await getAdminSession();
+  if (!session) {
+    redirect('/admin/login');
   }
 
   // Fetch stats in parallel
   const [
     totalOrders,
     pendingOrders,
-    confirmedOrders,
+    ,
     totalRevenue,
     pendingPrescriptions,
     totalUsers,

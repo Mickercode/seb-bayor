@@ -13,8 +13,15 @@ export default function ForgotPasswordPage() {
     e.preventDefault()
     setLoading(true)
 
-    // Simulate a brief delay for UX
-    await new Promise((resolve) => setTimeout(resolve, 800))
+    try {
+      await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+    } catch {
+      // Always show success to prevent email enumeration
+    }
 
     setSubmitted(true)
     setLoading(false)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/auth'
+import { sendPrescriptionUpdate } from '@/lib/email'
 
 export async function PATCH(
   request: NextRequest,
@@ -30,6 +31,18 @@ export async function PATCH(
         where: { id: prescription.orderId },
         data: { status: 'CONFIRMED' },
       })
+    }
+
+    // Send prescription status email (non-blocking)
+    const rxUser = await prisma.user.findUnique({
+      where: { id: prescription.userId },
+      select: { email: true },
+    })
+    if (rxUser) {
+      sendPrescriptionUpdate(rxUser.email, {
+        status,
+        reviewNote: reviewNote || null,
+      }).catch(() => {})
     }
 
     return NextResponse.json({ success: true, prescription })

@@ -1,24 +1,36 @@
-import { getSession } from '@/lib/auth';
+import { getAdminSession } from '@/lib/admin-auth';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import Link from 'next/link';
-import { LayoutDashboard, ShoppingBag, FileText, Package } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, FileText, Package, Users } from 'lucide-react';
+import AdminLogoutButton from '@/components/admin/logout-button';
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
+  // Check if we're on the login page — skip auth for it
+  const headersList = await headers();
+  const pathname = headersList.get('x-next-pathname') || '';
 
-  if (!session || !['PHARMACIST', 'ADMIN'].includes(session.role)) {
-    redirect('/auth/login');
+  // The login page renders its own full-page layout
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  const session = await getAdminSession();
+
+  if (!session) {
+    redirect('/admin/login');
   }
 
   const navItems = [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },
     { href: '/admin/prescriptions', label: 'Prescriptions', icon: FileText },
-    { href: '/admin/products', label: 'Products (Phase 2)', icon: Package },
+    { href: '/admin/products', label: 'Products', icon: Package },
+    { href: '/admin/customers', label: 'Customers', icon: Users },
   ];
 
   return (
@@ -26,7 +38,10 @@ export default async function AdminLayout({
       {/* Mobile top nav */}
       <nav className="md:hidden bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="container-max section-padding">
-          <p className="text-sm font-bold text-teal-800 mb-2">Seb &amp; Bayor Admin</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-teal-800">Seb &amp; Bayor Admin</p>
+            <AdminLogoutButton />
+          </div>
           <div className="flex gap-1 overflow-x-auto pb-2">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -75,7 +90,8 @@ export default async function AdminLayout({
 
           <div className="p-4 border-t border-teal-800">
             <p className="text-sm text-teal-300">{session.email}</p>
-            <p className="text-xs text-teal-400">{session.role}</p>
+            <p className="text-xs text-teal-400 mb-3">{session.role}</p>
+            <AdminLogoutButton />
           </div>
         </aside>
 

@@ -1,12 +1,10 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -31,13 +29,7 @@ export default function LoginPage() {
         return
       }
 
-      // Route based on user role
-      const role = data.user?.role
-      if (role === 'ADMIN' || role === 'PHARMACIST') {
-        window.location.href = '/admin'
-      } else {
-        window.location.href = '/shop'
-      }
+      window.location.href = '/shop'
     } catch {
       setError('Network error. Please check your connection and try again.')
     } finally {

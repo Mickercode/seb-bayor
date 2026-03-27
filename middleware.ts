@@ -12,31 +12,78 @@ function decodeToken(token: string): { userId: string; email: string; role: stri
 }
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')?.value
   const { pathname } = request.nextUrl
+  const hostname = request.headers.get('host') || ''
 
-  const isAuthPage = pathname.startsWith('/auth')
-  const isAdminPage = pathname.startsWith('/admin')
-  const isDashboardPage = pathname.startsWith('/dashboard')
+  // ─── Subdomain detection ───
+  // Matches: admin.domain.com, admin.localhost:3000, etc.
+  const isAdminSubdomain =
+    hostname.startsWith('admin.') ||
+    hostname.startsWith('admin-')
 
-  const session = token ? decodeToken(token) : null
-
-  // Logged-in users visiting auth pages → redirect based on role
-  if (isAuthPage && session) {
-    const dest = ['ADMIN', 'PHARMACIST'].includes(session.role) ? '/admin' : '/shop'
-    return NextResponse.redirect(new URL(dest, request.url))
+  // If on admin subdomain, rewrite all non-admin paths to /admin/*
+  if (isAdminSubdomain) {
+    // Already on an /admin path — let it through
+    if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+      // continue to auth checks below
+    } else if (pathname.startsWith('/api/')) {
+      // Block customer API routes from admin subdomain
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    } else if (pathname === '/') {
+      // Root of admin subdomain → /admin
+      return NextResponse.redirect(new URL('/admin', request.url))
+    } else {
+      // Block customer pages on admin subdomain
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
   }
 
-  // Protected routes without session → redirect to login
-  if ((isAdminPage || isDashboardPage) && !session) {
+  // ─── Admin routes auth (separate cookie: admin_token) ───
+  const isAdminLogin = pathname === '/admin/login'
+  const isAdminPage = pathname.startsWith('/admin')
+
+  if (isAdminPage) {
+    const adminToken = request.cookies.get('admin_token')?.value
+    const adminSession = adminToken ? decodeToken(adminToken) : null
+
+    // Already logged in and visiting login page → go to dashboard
+    if (isAdminLogin && adminSession && ['ADMIN', 'PHARMACIST'].includes(adminSession.role)) {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
+
+    // Not logged in and not on login page → go to admin login
+    if (!isAdminLogin && !adminSession) {
+      return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
+
+    // Logged in but wrong role → go to admin login
+    if (!isAdminLogin && adminSession && !['ADMIN', 'PHARMACIST'].includes(adminSession.role)) {
+      return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
+
+    // Set pathname header for the layout to detect login page
+    const response = NextResponse.next()
+    response.headers.set('x-next-pathname', pathname)
+    return response
+  }
+
+  // ─── Customer routes auth (cookie: token) ───
+  const token = request.cookies.get('token')?.value
+  const session = token ? decodeToken(token) : null
+
+  const isAuthPage = pathname.startsWith('/auth')
+  const isDashboardPage = pathname.startsWith('/dashboard')
+
+  // Logged-in customers visiting auth pages → redirect to shop
+  if (isAuthPage && session) {
+    return NextResponse.redirect(new URL('/shop', request.url))
+  }
+
+  // Protected customer routes without session → redirect to customer login
+  if (isDashboardPage && !session) {
     const loginUrl = new URL('/auth/login', request.url)
     loginUrl.searchParams.set('from', pathname)
     return NextResponse.redirect(loginUrl)
-  }
-
-  // Admin pages require ADMIN or PHARMACIST role
-  if (isAdminPage && session && !['ADMIN', 'PHARMACIST'].includes(session.role)) {
-    return NextResponse.redirect(new URL('/dashboard/orders', request.url))
   }
 
   return NextResponse.next()

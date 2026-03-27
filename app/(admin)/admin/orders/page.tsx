@@ -1,4 +1,4 @@
-import { getSession } from '@/lib/auth';
+import { getAdminSession } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -34,9 +34,9 @@ export default async function AdminOrdersPage({
 }: {
   searchParams: { status?: string };
 }) {
-  const session = await getSession();
-  if (!session || !['PHARMACIST', 'ADMIN'].includes(session.role)) {
-    redirect('/auth/login');
+  const session = await getAdminSession();
+  if (!session) {
+    redirect('/admin/login');
   }
 
   const activeStatus = searchParams.status || 'All';

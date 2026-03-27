@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireRole } from '@/lib/auth'
+import { sendOrderStatusUpdate } from '@/lib/email'
 
 export async function PATCH(
   request: NextRequest,
@@ -26,7 +27,16 @@ export async function PATCH(
     const order = await prisma.order.update({
       where: { id: params.id },
       data: { status },
+      include: { user: { select: { email: true } } },
     })
+
+    // Send email notification for status changes (non-blocking)
+    if (['CONFIRMED', 'DISPATCHED', 'DELIVERED', 'CANCELLED'].includes(status)) {
+      sendOrderStatusUpdate(order.user.email, {
+        id: order.id,
+        status,
+      }).catch(() => {})
+    }
 
     return NextResponse.json({ success: true, order })
   } catch (error) {
