@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search | AnythingDrugs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',500:'#2F5D6C'},mint:{DEFAULT:'#12EDA9',500:'#12EDA9',600:'#0EBE87'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body data-zone="shop" class="bg-white">
+  <div id="nav"></div>
+  <section class="section-padding"><div class="container-max">
+    <form action="/shop/search" class="max-w-xl mb-8">
+      <div class="flex border-2 border-gray-200 rounded-full overflow-hidden focus-within:border-mint-500">
+        <input type="text" name="q" id="searchInput" placeholder="Search medications..." class="flex-1 px-5 py-3 text-sm outline-none">
+        <button type="submit" class="px-5 text-mint-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></button>
+      </div>
+    </form>
+    <h1 id="title" class="text-xl font-bold text-gray-900 mb-6"></h1>
+    <div id="results" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"></div>
+  </div></section>
+  <div id="footer"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script>
+    document.getElementById('nav').innerHTML = Components.shopNav();
+    document.getElementById('footer').innerHTML = Components.footer();
+    const q = Utils.getParam('q') || '';
+    document.getElementById('searchInput').value = q;
+
+    async function load() {
+      if (!q) { document.getElementById('title').textContent = 'Enter a search term'; return; }
+      document.getElementById('title').textContent = 'Searching...';
+      try {
+        const data = await API.getProducts('q=' + encodeURIComponent(q));
+        const prods = data.products || [];
+        document.getElementById('title').textContent = `${prods.length} result${prods.length!==1?'s':''} for "${q}"`;
+        if (prods.length===0) { document.getElementById('results').innerHTML = '<div class="col-span-full text-center py-16 text-gray-500">No products found. Try a different search term.</div>'; return; }
+        document.getElementById('results').innerHTML = prods.map(p => `
+          <div class="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+            <a href="/shop/product/${p.slug}"><div class="relative aspect-square bg-gray-100 flex items-center justify-center"><span class="text-xs text-gray-400">No image</span>${p.requiresPrescription?'<span class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Rx</span>':''}</div></a>
+            <div class="p-3 flex flex-col flex-1">
+              <a href="/shop/product/${p.slug}"><h3 class="text-sm font-semibold text-gray-900 mb-0.5">${Utils.escapeHtml(p.nameGeneric)}</h3></a>
+              <p class="text-base font-bold text-gray-900 mt-auto mb-3">${Utils.formatPrice(p.price)}</p>
+              <button onclick="Cart.add({productId:'${p.id}',nameGeneric:'${p.nameGeneric.replace(/'/g,"\\'")}',nameBrand:null,price:${p.price},requiresPrescription:${p.requiresPrescription},slug:'${p.slug}'});this.textContent='Added!';setTimeout(()=>this.textContent='Add to Cart',1500)" class="btn-primary text-xs w-full py-2">Add to Cart</button>
+            </div>
+          </div>`).join('');
+      } catch { document.getElementById('results').innerHTML = '<p class="text-red-500">Search failed.</p>'; }
+    }
+    document.addEventListener('DOMContentLoaded', load);
+  </script>
+</body>
+</html>

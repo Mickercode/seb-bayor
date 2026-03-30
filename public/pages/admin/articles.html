@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Articles | Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'},mint:{DEFAULT:'#12EDA9',500:'#12EDA9'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/admin-shell.js"></script>
+  <script>
+    async function render() {
+      document.getElementById('app').innerHTML = adminShell('/admin', `
+        <div class="py-6">
+          <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-bold text-gray-900">Articles & Updates</h1>
+            <a href="/admin/articles/new" class="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg text-sm">+ New Article</a>
+          </div>
+          <div id="articlesList"><div class="text-center py-8"><span class="spinner mx-auto"></span></div></div>
+        </div>`);
+
+      try {
+        const data = await API.get('/api/admin/articles');
+        const articles = data.articles || [];
+        const el = document.getElementById('articlesList');
+        if (articles.length === 0) {
+          el.innerHTML = '<div class="text-center py-16 bg-white rounded-xl border border-gray-200"><p class="text-gray-500 mb-4">No articles yet</p><a href="/admin/articles/new" class="inline-flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg">Write your first article</a></div>';
+          return;
+        }
+        el.innerHTML = '<div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-200">' + articles.map(a => `
+          <div class="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="font-semibold text-gray-900 truncate">${Utils.escapeHtml(a.title)}</h3>
+                <span class="badge ${a.isPublished ? 'badge-green' : 'badge-gray'}">${a.isPublished ? 'Published' : 'Draft'}</span>
+                <span class="badge badge-blue">${Utils.escapeHtml(a.category)}</span>
+              </div>
+              <p class="text-sm text-gray-500">${Utils.escapeHtml(a.author?.fullName || '')} &middot; ${Utils.formatDate(a.createdAt)}</p>
+              ${a.excerpt ? `<p class="text-sm text-gray-400 mt-1 truncate">${Utils.escapeHtml(a.excerpt)}</p>` : ''}
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <button onclick="togglePublish('${a.id}', ${!a.isPublished})" class="text-sm font-medium ${a.isPublished ? 'text-amber-600 hover:text-amber-700' : 'text-green-600 hover:text-green-700'}">${a.isPublished ? 'Unpublish' : 'Publish'}</button>
+              <button onclick="deleteArticle('${a.id}')" class="text-sm text-gray-400 hover:text-red-500">Delete</button>
+            </div>
+          </div>`).join('') + '</div>';
+      } catch { document.getElementById('articlesList').innerHTML = '<p class="text-red-500">Failed to load.</p>'; }
+    }
+
+    async function togglePublish(id, publish) {
+      try { await API.patch('/api/admin/articles/' + id, { isPublished: publish }); render(); } catch { alert('Failed'); }
+    }
+
+    async function deleteArticle(id) {
+      if (!confirm('Delete this article?')) return;
+      try { await API.del('/api/admin/articles/' + id); render(); } catch { alert('Failed'); }
+    }
+
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

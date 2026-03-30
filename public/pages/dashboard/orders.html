@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Orders | Seb & Bayor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',100:'#D1E1E6',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'},mint:{DEFAULT:'#12EDA9',500:'#12EDA9',600:'#0EBE87'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="bg-gray-50" data-zone="corporate">
+  <div id="app"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script>
+    async function render() {
+      let content = '<div class="py-6"><h1 class="text-2xl font-bold text-gray-900 mb-6">My Orders</h1><div id="ordersList"><div class="text-center py-8"><span class="spinner mx-auto"></span></div></div></div>';
+      document.getElementById('app').innerHTML = Components.dashboardShell('/dashboard/orders', content);
+      try {
+        const data = await API.getOrders();
+        const el = document.getElementById('ordersList');
+        if (!data.orders || data.orders.length === 0) {
+          el.innerHTML = '<div class="text-center py-16 bg-white rounded-xl border border-gray-200"><svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg><p class="text-gray-500 mb-4">You haven\'t placed any orders yet</p><a href="/shop" class="inline-flex items-center px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg">Browse Shop</a></div>';
+          return;
+        }
+        el.innerHTML = '<div class="space-y-4">' + data.orders.map(o => `
+          <div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div class="space-y-1">
+                <div class="flex items-center gap-3">
+                  <p class="font-semibold text-gray-900">${Utils.shortId(o.id)}</p>
+                  ${Utils.statusBadge(o.status)}
+                </div>
+                <p class="text-sm text-gray-500">${Utils.formatDate(o.createdAt)}</p>
+                <p class="text-sm text-gray-600">${o.items?.length || o._count?.items || 0} item(s)</p>
+              </div>
+              <div class="flex items-center gap-4">
+                <p class="text-lg font-bold text-gray-900">${Utils.formatPrice(o.total)}</p>
+              </div>
+            </div>
+          </div>`).join('') + '</div>';
+      } catch { document.getElementById('ordersList').innerHTML = '<p class="text-red-500 text-sm">Failed to load orders.</p>'; }
+    }
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

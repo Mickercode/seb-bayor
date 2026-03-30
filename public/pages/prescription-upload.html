@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Prescription | Seb & Bayor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841'},mint:{DEFAULT:'#12EDA9',500:'#12EDA9',600:'#0EBE87'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body data-zone="shop" class="bg-white">
+  <div id="nav"></div>
+  <section class="section-padding">
+    <div class="container-max max-w-lg">
+      <h1 class="text-2xl font-bold text-gray-900 mb-2">Upload Prescription</h1>
+      <p class="text-gray-500 mb-8">Submit your prescription for pharmacist review.</p>
+
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-800">
+        <p class="font-semibold">How it works</p>
+        <p class="mt-1">Upload your prescription and our pharmacist will review it within 2 hours. You'll be contacted with next steps.</p>
+      </div>
+
+      <div id="error" class="hidden mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"></div>
+
+      <form id="rxForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Prescription File *</label>
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center" id="dropZone">
+            <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <p class="text-sm text-gray-600 mb-2">JPG, PNG, or PDF (max 10MB)</p>
+            <input type="file" id="rxFile" accept=".jpg,.jpeg,.png,.pdf" required class="text-sm">
+            <p id="fileStatus" class="hidden mt-2 text-sm text-green-600 flex items-center justify-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span id="fileName"></span>
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+          <input type="text" id="patientName" placeholder="Full name on prescription" class="form-input">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Prescriber / Doctor Name</label>
+          <input type="text" id="prescriberName" placeholder="Dr. Adebayo" class="form-input">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Notes to Pharmacist</label>
+          <textarea id="notes" rows="3" placeholder="Any additional information..." class="form-input"></textarea>
+        </div>
+
+        <button type="submit" id="submitBtn" class="btn-primary w-full py-3 disabled:opacity-50">Upload Prescription</button>
+      </form>
+
+      <div id="success" class="hidden text-center py-8">
+        <svg class="w-16 h-16 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <h2 class="text-xl font-bold text-gray-900 mb-2">Prescription Uploaded!</h2>
+        <p class="text-sm text-gray-500 mb-6">Our pharmacist will review it within 2 hours. You'll be contacted with next steps.</p>
+        <div class="flex flex-wrap justify-center gap-4">
+          <a href="/dashboard/prescriptions" class="btn-primary text-sm">View My Prescriptions</a>
+          <a href="/shop" class="btn-outline text-sm">Continue Shopping</a>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="footer"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script>
+    document.getElementById('nav').innerHTML = Components.shopNav();
+    document.getElementById('footer').innerHTML = Components.footer();
+
+    // Show file name on select
+    document.getElementById('rxFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileStatus').classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('rxForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = document.getElementById('error');
+      const btn = document.getElementById('submitBtn');
+      const file = document.getElementById('rxFile').files[0];
+
+      err.classList.add('hidden');
+
+      if (!file) {
+        err.textContent = 'Please select a prescription file';
+        err.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Uploading file...';
+
+      try {
+        // Step 1: Upload file to Cloudinary via our API
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+          credentials: 'same-origin',
+        });
+
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json();
+          throw { error: uploadErr.error || 'File upload failed' };
+        }
+
+        const uploadData = await uploadRes.json();
+        btn.textContent = 'Submitting prescription...';
+
+        // Step 2: Create prescription record
+        await API.post('/api/prescriptions', {
+          fileUrl: uploadData.url,
+          patientName: document.getElementById('patientName').value || null,
+          prescriberName: document.getElementById('prescriberName').value || null,
+          notes: document.getElementById('notes').value || null,
+        });
+
+        // Show success
+        document.getElementById('rxForm').classList.add('hidden');
+        document.getElementById('success').classList.remove('hidden');
+      } catch (ex) {
+        err.textContent = ex.error || 'Failed to upload prescription. Please try again.';
+        err.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Upload Prescription';
+      }
+    });
+  </script>
+</body>
+</html>

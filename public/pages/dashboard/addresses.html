@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Addresses | Seb & Bayor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'},mint:{DEFAULT:'#12EDA9',500:'#12EDA9'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="bg-gray-50" data-zone="corporate">
+  <div id="app"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script>
+    const STATES = ['Abia','Abuja (FCT)','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nassarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara'];
+    let addresses = [];
+
+    function renderPage() {
+      const content = `<div class="py-6">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-2xl font-bold text-gray-900">My Addresses</h1>
+          <button onclick="showForm()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg text-sm">+ Add Address</button>
+        </div>
+        <div id="formArea" class="hidden mb-6"></div>
+        <div id="addrList"><div class="text-center py-8"><span class="spinner mx-auto"></span></div></div>
+      </div>`;
+      document.getElementById('app').innerHTML = Components.dashboardShell('/dashboard/addresses', content);
+      loadAddresses();
+    }
+
+    async function loadAddresses() {
+      try {
+        const data = await API.getAddresses();
+        addresses = data.addresses || [];
+        renderList();
+      } catch { document.getElementById('addrList').innerHTML = '<p class="text-red-500 text-sm">Failed to load addresses.</p>'; }
+    }
+
+    function renderList() {
+      const el = document.getElementById('addrList');
+      if (addresses.length === 0) {
+        el.innerHTML = '<div class="text-center py-16 bg-white rounded-xl border border-gray-200"><svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg><p class="text-gray-500">No saved addresses</p></div>';
+        return;
+      }
+      el.innerHTML = '<div class="space-y-4">' + addresses.map(a => `
+        <div class="bg-white rounded-xl border ${a.isDefault ? 'border-teal-300' : 'border-gray-200'} p-5">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-semibold text-gray-900">${Utils.escapeHtml(a.label)}</span>
+                ${a.isDefault ? '<span class="badge badge-teal">Default</span>' : ''}
+              </div>
+              <p class="text-sm text-gray-600">${Utils.escapeHtml(a.street)}, ${Utils.escapeHtml(a.city)}, ${Utils.escapeHtml(a.state)}</p>
+              ${a.landmark ? `<p class="text-sm text-gray-400 mt-0.5">Near ${Utils.escapeHtml(a.landmark)}</p>` : ''}
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              ${!a.isDefault ? `<button onclick="setDefault('${a.id}')" class="text-teal-600 hover:text-teal-700 font-medium">Set default</button>` : ''}
+              <button onclick="deleteAddr('${a.id}')" class="text-gray-400 hover:text-red-500">Delete</button>
+            </div>
+          </div>
+        </div>`).join('') + '</div>';
+    }
+
+    function showForm() {
+      const stateOpts = STATES.map(s => `<option value="${s}">${s}</option>`).join('');
+      document.getElementById('formArea').innerHTML = `
+        <div class="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">New Address</h2>
+          <div class="space-y-4">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Label</label><select id="fLabel" class="form-input"><option>Home</option><option>Office</option><option>Other</option></select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Street *</label><input id="fStreet" class="form-input" placeholder="123 Herbert Macaulay Way"></div>
+            <div class="grid grid-cols-2 gap-4">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">City *</label><input id="fCity" class="form-input" placeholder="Ikeja"></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">State *</label><select id="fState" class="form-input"><option value="">Select state</option>${stateOpts}</select></div>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Landmark</label><input id="fLandmark" class="form-input" placeholder="Near Computer Village"></div>
+            <div class="flex gap-3"><button onclick="saveAddr()" class="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg text-sm">Save</button><button onclick="hideForm()" class="px-6 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">Cancel</button></div>
+          </div>
+        </div>`;
+      document.getElementById('formArea').classList.remove('hidden');
+    }
+
+    function hideForm() { document.getElementById('formArea').classList.add('hidden'); }
+
+    async function saveAddr() {
+      try {
+        await API.createAddress({ label: $('#fLabel').value, street: $('#fStreet').value, city: $('#fCity').value, state: $('#fState').value, landmark: $('#fLandmark').value });
+        hideForm(); loadAddresses();
+      } catch (e) { alert(e.error || 'Failed to save'); }
+    }
+
+    async function setDefault(id) { try { await API.updateAddress(id, { isDefault: true }); loadAddresses(); } catch {} }
+    async function deleteAddr(id) { if (confirm('Delete this address?')) { try { await API.deleteAddress(id); loadAddresses(); } catch {} } }
+
+    document.addEventListener('DOMContentLoaded', renderPage);
+  </script>
+</body>
+</html>

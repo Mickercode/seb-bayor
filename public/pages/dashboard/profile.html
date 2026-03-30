@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile | Seb & Bayor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="bg-gray-50" data-zone="corporate">
+  <div id="app"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script>
+    async function render() {
+      const content = '<div class="py-6"><h1 class="text-2xl font-bold text-gray-900 mb-6">My Profile</h1><div id="profileCard"><div class="text-center py-8"><span class="spinner mx-auto"></span></div></div></div>';
+      document.getElementById('app').innerHTML = Components.dashboardShell('/dashboard/profile', content);
+      try {
+        const data = await API.me();
+        const u = data.user;
+        document.getElementById('profileCard').innerHTML = `
+          <div class="bg-white rounded-xl border border-gray-200 p-6 max-w-lg">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                <svg class="w-6 h-6 text-teal-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+              </div>
+              <div><p class="font-semibold text-gray-900">${Utils.escapeHtml(u.fullName)}</p><p class="text-sm text-gray-500">${Utils.escapeHtml(u.email)}</p></div>
+            </div>
+            <div class="space-y-4">
+              <div><p class="text-sm font-medium text-gray-500 mb-1">Full Name</p><p class="text-gray-900">${Utils.escapeHtml(u.fullName)}</p></div>
+              <div><p class="text-sm font-medium text-gray-500 mb-1">Email</p><p class="text-gray-900">${Utils.escapeHtml(u.email)}</p></div>
+              <div><p class="text-sm font-medium text-gray-500 mb-1">Phone</p><p class="text-gray-900">${u.phone ? Utils.escapeHtml(u.phone) : 'Not provided'}</p></div>
+            </div>
+            <div class="mt-8 pt-6 border-t border-gray-200">
+              <button onclick="Auth.logout()" class="inline-flex items-center gap-2 px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 font-medium rounded-lg text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                Log Out
+              </button>
+            </div>
+          </div>`;
+      } catch { document.getElementById('profileCard').innerHTML = '<p class="text-red-500 text-sm">Failed to load profile.</p>'; }
+    }
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

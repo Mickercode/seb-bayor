@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Hub | Seb & Bayor</title>
+  <meta name="description" content="Health articles, drug education, disease awareness, and pharmacy news from Seb & Bayor Pharmaceutical Ltd.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'},mint:{DEFAULT:'#12EDA9',50:'#E6FDF6',500:'#12EDA9',600:'#0EBE87'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body data-zone="corporate" class="bg-white text-gray-900">
+  <div id="nav"></div>
+
+  <section class="bg-gradient-to-br from-teal-600 to-teal-800 text-white section-padding py-20">
+    <div class="container-max">
+      <p class="text-teal-200 font-semibold text-sm uppercase tracking-wider mb-4">Health Hub</p>
+      <h1 class="text-4xl md:text-5xl font-bold mb-6" style="font-family:var(--font-heading)">Articles &amp; Health Updates</h1>
+      <p class="text-lg text-teal-100 max-w-2xl">Drug education, disease awareness, health tips, and pharmacy news from our team of registered pharmacists.</p>
+    </div>
+  </section>
+
+  <section class="section-padding bg-white">
+    <div class="container-max">
+      <div id="articles"><div class="text-center py-16"><span class="spinner mx-auto"></span></div></div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script>
+    document.getElementById('nav').innerHTML = Components.corporateNav('/blog');
+    document.getElementById('footer').innerHTML = Components.footer();
+
+    async function load() {
+      try {
+        const data = await API.get('/api/articles');
+        const articles = data.articles || [];
+        const el = document.getElementById('articles');
+        if (articles.length === 0) {
+          el.innerHTML = '<div class="text-center py-16"><svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg><p class="text-gray-500">No articles published yet. Check back soon!</p></div>';
+          return;
+        }
+        el.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">' + articles.map(a => `
+          <a href="/blog/${a.slug}" class="group block bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+            <div class="aspect-video bg-gray-100 flex items-center justify-center">
+              ${a.coverImage ? `<img src="${Utils.escapeHtml(a.coverImage)}" alt="" class="w-full h-full object-cover">` : '<svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>'}
+            </div>
+            <div class="p-5">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="badge badge-teal">${Utils.escapeHtml(a.category)}</span>
+                <span class="text-xs text-gray-400">${Utils.formatDate(a.publishedAt || a.createdAt)}</span>
+              </div>
+              <h2 class="text-lg font-bold text-gray-900 group-hover:text-teal-600 transition-colors mb-2">${Utils.escapeHtml(a.title)}</h2>
+              ${a.excerpt ? `<p class="text-sm text-gray-600 line-clamp-2">${Utils.escapeHtml(a.excerpt)}</p>` : ''}
+              <p class="text-xs text-gray-400 mt-3">By ${Utils.escapeHtml(a.author?.fullName || 'Seb & Bayor')}</p>
+            </div>
+          </a>`).join('') + '</div>';
+      } catch { document.getElementById('articles').innerHTML = '<p class="text-red-500">Failed to load articles.</p>'; }
+    }
+
+    document.addEventListener('DOMContentLoaded', load);
+  </script>
+</body>
+</html>

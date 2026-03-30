@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Seb & Bayor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',100:'#D1E1E6',300:'#7596A2',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'},mint:{DEFAULT:'#12EDA9',500:'#12EDA9'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/admin-shell.js"></script>
+  <script>
+    async function render() {
+      document.getElementById('app').innerHTML = adminShell('/admin', '<div class="py-6"><h1 class="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1><p class="text-sm text-gray-500 mb-8">Overview</p><div id="stats" class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8"></div><div id="attention" class="mb-8"></div><div id="recent"></div></div>');
+      try {
+        const [ordersData, rxData, custData, prodData] = await Promise.all([
+          API.get('/api/admin/orders'), API.get('/api/admin/prescriptions'), API.get('/api/admin/customers'), API.get('/api/admin/products')
+        ]);
+        const orders = ordersData.orders || [];
+        const pendingOrders = orders.filter(o => o.status === 'PENDING').length;
+        const pendingRx = (rxData.prescriptions || []).filter(r => r.status === 'PENDING').length;
+        const totalCustomers = (custData.customers || []).length;
+        const activeProducts = (prodData.products || []).filter(p => p.isActive).length;
+        const revenue = orders.filter(o => o.paymentStatus === 'PAID').reduce((s, o) => s + o.total, 0);
+
+        const stats = [
+          { label: 'Total Revenue', value: Utils.formatPrice(revenue), color: 'bg-green-50 text-green-700' },
+          { label: 'Total Orders', value: orders.length, color: 'bg-blue-50 text-blue-700' },
+          { label: 'Pending Orders', value: pendingOrders, color: 'bg-amber-50 text-amber-700', href: '/admin/orders?status=PENDING' },
+          { label: 'Rx Pending', value: pendingRx, color: 'bg-red-50 text-red-700', href: '/admin/prescriptions' },
+          { label: 'Customers', value: totalCustomers, color: 'bg-purple-50 text-purple-700' },
+          { label: 'Active Products', value: activeProducts, color: 'bg-teal-50 text-teal-700' },
+        ];
+
+        document.getElementById('stats').innerHTML = stats.map(s => {
+          const inner = `<div class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"><span class="inline-block px-2 py-1 rounded-lg text-xs font-medium ${s.color} mb-3">${s.label}</span><p class="text-2xl font-bold text-gray-900">${s.value}</p></div>`;
+          return s.href ? `<a href="${s.href}">${inner}</a>` : inner;
+        }).join('');
+
+        if (pendingOrders > 0 || pendingRx > 0) {
+          document.getElementById('attention').innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-xl p-5"><h2 class="text-sm font-semibold text-amber-800 mb-3">Needs Attention</h2><div class="flex flex-wrap gap-3">${pendingOrders > 0 ? `<a href="/admin/orders?status=PENDING" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 rounded-lg text-sm font-medium text-amber-800 hover:bg-amber-100">${pendingOrders} pending order(s)</a>` : ''}${pendingRx > 0 ? `<a href="/admin/prescriptions" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 rounded-lg text-sm font-medium text-amber-800 hover:bg-amber-100">${pendingRx} prescription(s) to review</a>` : ''}</div></div>`;
+        }
+
+        const recent = orders.slice(0, 5);
+        document.getElementById('recent').innerHTML = `<div class="flex items-center justify-between mb-4"><h2 class="text-lg font-semibold text-gray-900">Recent Orders</h2><a href="/admin/orders" class="text-sm text-teal-700 hover:text-teal-800 font-medium">View all</a></div>${recent.length === 0 ? '<div class="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">No orders yet</div>' : '<div class="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">' + recent.map(o => `<a href="/admin/orders/${o.id}" class="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"><div><div class="flex items-center gap-2"><p class="text-sm font-semibold text-gray-900">${Utils.shortId(o.id)}</p>${Utils.statusBadge(o.status)}</div><p class="text-sm text-gray-500 mt-0.5">${o.user?.fullName || ''} &middot; ${o._count?.items || 0} items</p></div><div class="text-right"><p class="text-sm font-semibold text-gray-900">${Utils.formatPrice(o.total)}</p><p class="text-xs text-gray-400">${Utils.formatDateTime(o.createdAt)}</p></div></a>`).join('') + '</div>'}`;
+      } catch (e) { console.error(e); }
+    }
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

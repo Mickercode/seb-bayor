@@ -4,6 +4,26 @@ import { getAdminSession } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
+// List all products (admin)
+export async function GET() {
+  try {
+    const session = await getAdminSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const products = await prisma.product.findMany({
+      include: { category: { select: { name: true, slug: true } } },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return NextResponse.json({ products })
+  } catch (error) {
+    console.error('Get products error:', error)
+    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
+  }
+}
+
 // Create a new product
 export async function POST(request: NextRequest) {
   try {

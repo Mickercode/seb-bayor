@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Product | Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'},mint:{DEFAULT:'#12EDA9',500:'#12EDA9'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/admin-shell.js"></script>
+  <script>
+    let categories = [];
+
+    async function render() {
+      document.getElementById('app').innerHTML = adminShell('/admin/products', `
+        <div class="py-6">
+          <a href="/admin/products" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>Back to Products
+          </a>
+          <h1 class="text-2xl font-bold text-gray-900 mb-8">Add New Product</h1>
+          <div id="error" class="hidden mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"></div>
+          <div id="success" class="hidden mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700"></div>
+          <form id="productForm" class="bg-white rounded-xl border border-gray-200 p-6 space-y-6 max-w-3xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Generic Name *</label><input id="nameGeneric" required placeholder="e.g. Paracetamol" class="form-input"></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label><input id="nameBrand" placeholder="e.g. Panadol" class="form-input"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Slug *</label><input id="slug" required placeholder="e.g. paracetamol-500mg" class="form-input"><p class="text-xs text-gray-400 mt-1">URL-friendly name (auto-generated from generic name)</p></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Category *</label><select id="categoryId" required class="form-input"><option value="">Select category</option></select></div>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Description *</label><textarea id="description" required rows="3" placeholder="Product description..." class="form-input"></textarea></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Price (₦) *</label><input id="price" type="number" required min="0" step="0.01" placeholder="1500" class="form-input"></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label><input id="stockQty" type="number" min="0" value="0" class="form-input"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Brand / Manufacturer</label><input id="brand" placeholder="e.g. GlaxoSmithKline" class="form-input"></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">NAFDAC Number</label><input id="nafdacNumber" placeholder="e.g. A4-0012" class="form-input"></div>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Indications</label><textarea id="indications" rows="2" placeholder="What conditions is this used for?" class="form-input"></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Dosage Guidance</label><textarea id="dosageGuidance" rows="2" placeholder="Dosage instructions..." class="form-input"></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Warnings</label><textarea id="warnings" rows="2" placeholder="Side effects, contraindications..." class="form-input"></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Storage</label><input id="storage" placeholder="e.g. Store below 25°C" class="form-input"></div>
+            <div class="flex items-center gap-6">
+              <label class="flex items-center gap-2 cursor-pointer"><input id="requiresPrescription" type="checkbox" class="rounded"><span class="text-sm text-gray-700">Requires Prescription (Rx)</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input id="isActive" type="checkbox" checked class="rounded"><span class="text-sm text-gray-700">Active (visible in shop)</span></label>
+            </div>
+            <div class="flex gap-3 pt-4 border-t border-gray-200">
+              <button type="submit" id="submitBtn" class="px-8 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg text-sm disabled:opacity-50">Create Product</button>
+              <a href="/admin/products" class="px-8 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm">Cancel</a>
+            </div>
+          </form>
+        </div>`);
+
+      // Load categories
+      try {
+        const data = await API.get('/api/admin/categories');
+        categories = data.categories || [];
+        const sel = document.getElementById('categoryId');
+        categories.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; sel.appendChild(o); });
+      } catch {}
+
+      // Auto-generate slug
+      document.getElementById('nameGeneric').addEventListener('input', (e) => {
+        document.getElementById('slug').value = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      });
+
+      // Submit
+      document.getElementById('productForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = document.getElementById('error');
+        const suc = document.getElementById('success');
+        const btn = document.getElementById('submitBtn');
+        err.classList.add('hidden'); suc.classList.add('hidden');
+        btn.disabled = true; btn.textContent = 'Creating...';
+
+        try {
+          await API.post('/api/admin/products', {
+            nameGeneric: document.getElementById('nameGeneric').value,
+            nameBrand: document.getElementById('nameBrand').value || null,
+            slug: document.getElementById('slug').value,
+            description: document.getElementById('description').value,
+            price: parseFloat(document.getElementById('price').value),
+            categoryId: document.getElementById('categoryId').value,
+            stockQty: parseInt(document.getElementById('stockQty').value) || 0,
+            brand: document.getElementById('brand').value || null,
+            nafdacNumber: document.getElementById('nafdacNumber').value || null,
+            indications: document.getElementById('indications').value || null,
+            dosageGuidance: document.getElementById('dosageGuidance').value || null,
+            warnings: document.getElementById('warnings').value || null,
+            storage: document.getElementById('storage').value || null,
+            requiresPrescription: document.getElementById('requiresPrescription').checked,
+            isActive: document.getElementById('isActive').checked,
+          });
+          suc.textContent = 'Product created successfully!';
+          suc.classList.remove('hidden');
+          btn.textContent = 'Created!';
+          setTimeout(() => window.location.href = '/admin/products', 1500);
+        } catch (ex) {
+          err.textContent = ex.error || 'Failed to create product';
+          err.classList.remove('hidden');
+          btn.disabled = false; btn.textContent = 'Create Product';
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

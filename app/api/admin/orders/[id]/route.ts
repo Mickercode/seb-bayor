@@ -5,6 +5,47 @@ import { sendOrderStatusUpdate } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
+// Get order detail
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await requireRole('PHARMACIST')
+
+    const order = await prisma.order.findUnique({
+      where: { id: params.id },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, phone: true } },
+        address: true,
+        items: {
+          include: {
+            product: { select: { nameGeneric: true, nameBrand: true, slug: true } },
+          },
+        },
+        prescriptions: {
+          include: { pharmacist: { select: { fullName: true } } },
+        },
+      },
+    })
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    return NextResponse.json({ order })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Forbidden') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    console.error('Get order error:', error)
+    return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 })
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }

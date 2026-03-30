@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prescriptions | Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/admin-shell.js"></script>
+  <script>
+    async function render() {
+      document.getElementById('app').innerHTML = adminShell('/admin/prescriptions', '<div class="py-6"><h1 class="text-2xl font-bold text-gray-900 mb-6">Prescription Review Queue</h1><div id="rxList"><div class="text-center py-8"><span class="spinner mx-auto"></span></div></div></div>');
+      try {
+        const data = await API.get('/api/admin/prescriptions');
+        const rxs = data.prescriptions || [];
+        const pending = rxs.filter(r=>r.status==='PENDING').length;
+        const el = document.getElementById('rxList');
+        if (rxs.length===0) { el.innerHTML='<div class="bg-white rounded-lg p-8 text-center text-gray-500">No prescriptions submitted yet.</div>'; return; }
+        el.innerHTML = `<p class="text-sm text-gray-500 mb-4">${pending} pending review</p><div class="space-y-4">${rxs.map(rx => `
+          <div class="bg-white rounded-lg p-6 shadow-sm border-l-4 ${rx.status==='PENDING'?'border-l-amber-400':rx.status==='APPROVED'?'border-l-green-400':'border-l-red-400'}">
+            <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2"><h3 class="font-bold">${Utils.escapeHtml(rx.user?.fullName||'')}</h3>${Utils.statusBadge(rx.status)}</div>
+                <div class="text-sm text-gray-600 space-y-1">
+                  <p>Email: ${Utils.escapeHtml(rx.user?.email||'')}</p>
+                  ${rx.user?.phone?`<p>Phone: ${Utils.escapeHtml(rx.user.phone)}</p>`:''}
+                  ${rx.patientName?`<p>Patient: ${Utils.escapeHtml(rx.patientName)}</p>`:''}
+                  ${rx.order?`<p>Order: ${Utils.shortId(rx.order.id)} — ${Utils.formatPrice(rx.order.total)}</p>`:''}
+                  <p class="text-xs text-gray-400">Submitted: ${Utils.formatDateTime(rx.submittedAt)}</p>
+                </div>
+                ${rx.fileUrl?`<a href="${rx.fileUrl}" target="_blank" class="inline-flex items-center gap-1 mt-2 text-sm text-teal-600 hover:underline">View File</a>`:''}
+                ${rx.reviewNote?`<div class="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-700"><span class="font-medium">Note:</span> ${Utils.escapeHtml(rx.reviewNote)}</div>`:''}
+              </div>
+              ${rx.status==='PENDING'?`<div class="shrink-0" id="actions-${rx.id}">
+                <div class="flex items-center gap-2">
+                  <button onclick="reviewRx('${rx.id}','APPROVED')" class="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg">Approve</button>
+                  <button onclick="showQuery('${rx.id}','QUERIED')" class="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg">Query</button>
+                  <button onclick="showQuery('${rx.id}','REJECTED')" class="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg">Reject</button>
+                </div>
+              </div>`:''}
+            </div>
+          </div>`).join('')}</div>`;
+      } catch { document.getElementById('rxList').innerHTML='<p class="text-red-500">Failed to load.</p>'; }
+    }
+
+    async function reviewRx(id, status, note) {
+      try {
+        await API.adminUpdatePrescription(id, { status, reviewNote: note || undefined });
+        render();
+      } catch { alert('Failed to update'); }
+    }
+
+    function showQuery(id, status) {
+      const el = document.getElementById('actions-'+id);
+      el.innerHTML = `<div class="space-y-2"><textarea id="note-${id}" rows="2" placeholder="${status==='QUERIED'?'Enter query...':'Reason for rejection...'}" class="form-input text-sm"></textarea><div class="flex gap-2"><button onclick="reviewRx('${id}','${status}',document.getElementById('note-${id}').value)" class="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg">Confirm</button><button onclick="render()" class="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg">Cancel</button></div></div>`;
+    }
+
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

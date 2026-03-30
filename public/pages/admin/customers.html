@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customers | Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/admin-shell.js"></script>
+  <script>
+    async function render() {
+      document.getElementById('app').innerHTML = adminShell('/admin/customers', '<div class="py-6"><h1 class="text-2xl font-bold text-gray-900 mb-6">Customers</h1><div id="custList"><div class="text-center py-8"><span class="spinner mx-auto"></span></div></div></div>');
+      try {
+        const data = await API.get('/api/admin/customers');
+        const custs = data.customers || [];
+        const el = document.getElementById('custList');
+        if (custs.length===0) { el.innerHTML='<div class="text-center py-16 bg-white rounded-xl border border-gray-200"><p class="text-gray-500">No customers yet</p></div>'; return; }
+        el.innerHTML = `<div class="bg-white rounded-xl border border-gray-200 overflow-hidden"><div class="hidden md:block overflow-x-auto"><table class="w-full"><thead><tr class="border-b bg-gray-50"><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Name</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Email</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Phone</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Joined</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Orders</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Rx</th></tr></thead><tbody class="divide-y divide-gray-200">${custs.map(c => `<tr class="hover:bg-gray-50"><td class="px-4 py-3 text-sm font-medium text-gray-900">${Utils.escapeHtml(c.fullName)}</td><td class="px-4 py-3 text-sm text-gray-600">${Utils.escapeHtml(c.email)}</td><td class="px-4 py-3 text-sm text-gray-600">${c.phone||'—'}</td><td class="px-4 py-3 text-sm text-gray-500">${Utils.formatDate(c.createdAt)}</td><td class="px-4 py-3 text-sm text-gray-900">${c._count?.orders||0}</td><td class="px-4 py-3 text-sm text-gray-900">${c._count?.prescriptions||0}</td></tr>`).join('')}</tbody></table></div>
+          <div class="md:hidden divide-y divide-gray-200">${custs.map(c => `<div class="p-4"><p class="font-medium text-gray-900">${Utils.escapeHtml(c.fullName)}</p><p class="text-sm text-gray-600">${Utils.escapeHtml(c.email)}</p><p class="text-sm text-gray-400 mt-1">${Utils.formatDate(c.createdAt)} &middot; ${c._count?.orders||0} orders &middot; ${c._count?.prescriptions||0} Rx</p></div>`).join('')}</div></div>`;
+      } catch { document.getElementById('custList').innerHTML='<p class="text-red-500">Failed to load.</p>'; }
+    }
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>
