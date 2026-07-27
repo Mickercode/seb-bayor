@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { publicProxy, hasSiteKey, toSebPrescriptionCreated, toSebPrescriptionList } from '@/lib/conddo-proxy'
 
 export const dynamic = 'force-dynamic'
 
-// Get user's prescriptions
+/**
+ * GET /api/prescriptions
+ * List the current customer's prescriptions.
+ */
 export async function GET() {
   try {
+    // ── Proxy to Conddo (works with Conddo JWT) ─────────────────────
+    if (hasSiteKey) {
+      const cookieStore = await cookies()
+      const customerToken = cookieStore.get('token')?.value
+      if (customerToken) {
+        const result = await publicProxy('GET', '/pharmacy/prescriptions', undefined, customerToken)
+        if (result.status < 400) {
+          return NextResponse.json(toSebPrescriptionList(result.body))
+        }
+      }
+    }
+
+    // ── Fallback: local SQLite ────────────────────────────────────────
     const session = await getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -14,9 +32,7 @@ export async function GET() {
 
     const prescriptions = await prisma.prescription.findMany({
       where: { userId: session.userId },
-      include: {
-        order: { select: { id: true } },
-      },
+      include: { order: { select: { id: true } } },
       orderBy: { submittedAt: 'desc' },
     })
 
@@ -27,19 +43,40 @@ export async function GET() {
   }
 }
 
-// Upload a prescription (standalone, not tied to an order)
+/**
+ * POST /api/prescriptions
+ * Submit a prescription file for pharmacist review.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
     const { fileUrl, patientName, prescriberName, notes } = body
 
     if (!fileUrl) {
       return NextResponse.json({ error: 'File URL is required' }, { status: 400 })
+    }
+
+    // ── Proxy to Conddo (works with Conddo JWT) ─────────────────────
+    if (hasSiteKey) {
+      const cookieStore = await cookies()
+      const customerToken = cookieStore.get('token')?.value
+      if (customerToken) {
+        const result = await publicProxy('POST', '/pharmacy/prescriptions', {
+          fileUrl,
+          patientName: patientName || '',
+          prescriberName: prescriberName || '',
+          notes: notes || null,
+        }, customerToken)
+        if (result.status < 400) {
+          return NextResponse.json(toSebPrescriptionCreated(result.body), { status: 201 })
+        }
+      }
+    }
+
+    // ── Fallback: local SQLite ────────────────────────────────────────
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const prescription = await prisma.prescription.create({

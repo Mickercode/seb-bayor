@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { publicProxy, hasSiteKey, toSebCart } from '@/lib/conddo-proxy'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,9 +16,26 @@ export interface CartItemPayload {
   slug: string
 }
 
-// Get the user's server-side cart
+/**
+ * GET /api/cart
+ * If hasSiteKey + customer token: proxy to Conddo's public cart API.
+ * Otherwise: read from local SQLite (legacy).
+ */
 export async function GET() {
   try {
+    // ── Proxy to Conddo (works with Conddo JWT) ─────────────────────
+    if (hasSiteKey) {
+      const cookieStore = await cookies()
+      const customerToken = cookieStore.get('token')?.value
+      if (customerToken) {
+        const result = await publicProxy('GET', '/pharmacy/cart', undefined, customerToken)
+        if (result.status < 400) {
+          return NextResponse.json(toSebCart(result.body))
+        }
+      }
+    }
+
+    // ── Fallback: local SQLite (requires local JWT) ──────────────────
     const session = await getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -27,7 +46,6 @@ export async function GET() {
     })
 
     const items: CartItemPayload[] = cart ? JSON.parse(cart.items) : []
-
     return NextResponse.json({ items })
   } catch (error) {
     console.error('Get cart error:', error)
@@ -35,14 +53,13 @@ export async function GET() {
   }
 }
 
-// Sync (replace) the user's cart
+/**
+ * PUT /api/cart
+ * Sync (replace) the user's cart.
+ * Conddo's cart is per-item, so we: clear → POST each item.
+ */
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
     const { items } = body
 
@@ -50,23 +67,40 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Items must be an array' }, { status: 400 })
     }
 
-    // Validate items — only keep valid product references
+    // ── Proxy to Conddo (works with Conddo JWT) ─────────────────────
+    if (hasSiteKey) {
+      const cookieStore = await cookies()
+      const customerToken = cookieStore.get('token')?.value
+      if (customerToken) {
+        // Clear cart first
+        await publicProxy('DELETE', '/pharmacy/cart', undefined, customerToken)
+        // Upsert each item
+        for (const item of items) {
+          if (!item.productId || !item.quantity || item.quantity < 1) continue
+          await publicProxy('POST', '/pharmacy/cart', {
+            productId: item.productId,
+            quantity: Math.min(item.quantity, 10),
+          }, customerToken)
+        }
+        // Read back
+        const result = await publicProxy('GET', '/pharmacy/cart', undefined, customerToken)
+        return NextResponse.json(toSebCart(result.body))
+      }
+    }
+
+    // ── Fallback: local SQLite ────────────────────────────────────────
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const validItems: CartItemPayload[] = []
     for (const item of items) {
       if (!item.productId || !item.quantity || item.quantity < 1) continue
 
       const product = await prisma.product.findUnique({
         where: { id: item.productId },
-        select: {
-          id: true,
-          nameGeneric: true,
-          nameBrand: true,
-          price: true,
-          slug: true,
-          requiresPrescription: true,
-          isActive: true,
-          stockQty: true,
-        },
+        select: { id: true, nameGeneric: true, nameBrand: true, price: true, slug: true, requiresPrescription: true, isActive: true, stockQty: true },
       })
 
       if (!product || !product.isActive) continue
@@ -84,13 +118,8 @@ export async function PUT(request: NextRequest) {
 
     await prisma.cart.upsert({
       where: { userId: session.userId },
-      create: {
-        userId: session.userId,
-        items: JSON.stringify(validItems),
-      },
-      update: {
-        items: JSON.stringify(validItems),
-      },
+      create: { userId: session.userId, items: JSON.stringify(validItems) },
+      update: { items: JSON.stringify(validItems) },
     })
 
     return NextResponse.json({ items: validItems })
@@ -100,9 +129,22 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// Clear the user's cart
+/**
+ * DELETE /api/cart
+ */
 export async function DELETE() {
   try {
+    // ── Proxy to Conddo (works with Conddo JWT) ─────────────────────
+    if (hasSiteKey) {
+      const cookieStore = await cookies()
+      const customerToken = cookieStore.get('token')?.value
+      if (customerToken) {
+        await publicProxy('DELETE', '/pharmacy/cart', undefined, customerToken)
+        return NextResponse.json({ success: true })
+      }
+    }
+
+    // ── Fallback: local SQLite ────────────────────────────────────────
     const session = await getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -110,13 +152,8 @@ export async function DELETE() {
 
     await prisma.cart.upsert({
       where: { userId: session.userId },
-      create: {
-        userId: session.userId,
-        items: '[]',
-      },
-      update: {
-        items: '[]',
-      },
+      create: { userId: session.userId, items: '[]' },
+      update: { items: '[]' },
     })
 
     return NextResponse.json({ success: true })

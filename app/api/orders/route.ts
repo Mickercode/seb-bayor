@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { publicProxy, hasSiteKey, toSebOrderCreated } from '@/lib/conddo-proxy'
 import { getDeliveryFee } from '@/lib/delivery-fees'
 import { sendOrderConfirmation } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
-// Create a new order
+/**
+ * POST /api/orders
+ * Place an order. If hasSiteKey + customer token: proxy to Conddo.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
     const { items, addressId, notes } = body
 
@@ -21,7 +21,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 })
     }
 
-    // Fetch address for delivery fee
+    // ── Proxy to Conddo (works with Conddo JWT) ─────────────────────
+    if (hasSiteKey) {
+      const cookieStore = await cookies()
+      const customerToken = cookieStore.get('token')?.value
+      if (customerToken) {
+        const conddoBody: Record<string, unknown> = {
+          items: items.map((i: { productId: string; quantity: number }) => ({
+            productId: i.productId,
+            quantity: i.quantity,
+          })),
+          addressId,
+          notes: notes || undefined,
+        }
+
+        const result = await publicProxy('POST', '/pharmacy/orders', conddoBody, customerToken)
+        if (result.status < 400) {
+          const transformed = toSebOrderCreated(result.body)
+          // Clear local cart after successful order
+          try {
+            const session = await getSession()
+            if (session) {
+              await prisma.cart.upsert({
+                where: { userId: session.userId },
+                create: { userId: session.userId, items: '[]' },
+                update: { items: '[]' },
+              })
+            }
+          } catch {}
+          return NextResponse.json(transformed)
+        }
+      }
+    }
+
+    // ── Fallback: local SQLite ────────────────────────────────────────
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     let deliveryFee = 0
     if (addressId) {
       const address = await prisma.address.findUnique({ where: { id: addressId } })
@@ -30,17 +68,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate totals from actual product prices
     let subtotal = 0
     const orderItems = []
 
     for (const item of items) {
       const product = await prisma.product.findUnique({ where: { id: item.productId } })
       if (!product || !product.isActive) {
-        return NextResponse.json(
-          { error: `Product not found: ${item.productId}` },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: `Product not found: ${item.productId}` }, { status: 400 })
       }
 
       const lineTotal = product.price * item.quantity
@@ -50,11 +84,7 @@ export async function POST(request: NextRequest) {
         productId: product.id,
         quantity: item.quantity,
         unitPrice: product.price,
-        snapshot: JSON.stringify({
-          nameGeneric: product.nameGeneric,
-          nameBrand: product.nameBrand,
-          price: product.price,
-        }),
+        snapshot: JSON.stringify({ nameGeneric: product.nameGeneric, nameBrand: product.nameBrand, price: product.price }),
       })
     }
 
@@ -70,21 +100,17 @@ export async function POST(request: NextRequest) {
         addressId,
         paymentStatus: 'PENDING',
         notes,
-        items: {
-          create: orderItems,
-        },
+        items: { create: orderItems },
       },
       include: { items: true },
     })
 
-    // Clear the server-side cart after order is placed
     await prisma.cart.upsert({
       where: { userId: session.userId },
       create: { userId: session.userId, items: '[]' },
       update: { items: '[]' },
     })
 
-    // Send order confirmation email (non-blocking)
     sendOrderConfirmation(session.email, {
       id: order.id,
       total,
@@ -98,9 +124,27 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get current user's orders
+/**
+ * GET /api/orders
+ * List the current customer's orders.
+ */
 export async function GET() {
   try {
+    // ── Proxy to Conddo (works with Conddo JWT) ─────────────────────
+    if (hasSiteKey) {
+      const cookieStore = await cookies()
+      const customerToken = cookieStore.get('token')?.value
+      if (customerToken) {
+        const result = await publicProxy('GET', '/pharmacy/orders', undefined, customerToken)
+        if (result.status < 400) {
+          const body = result.body as Record<string, unknown>
+          const orders = Array.isArray(body?.orders) ? body.orders : []
+          return NextResponse.json({ orders })
+        }
+      }
+    }
+
+    // ── Fallback: local SQLite ────────────────────────────────────────
     const session = await getSession()
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

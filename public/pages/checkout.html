@@ -63,7 +63,8 @@
                 <div class="border-t mt-3 pt-3 flex justify-between font-bold"><span>Total</span><span>${Utils.formatPrice(subtotal)}</span></div>
               </div>
               <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-center text-sm text-gray-600">
-                <p class="font-semibold mb-2">Payment</p><p>Payment integration coming soon. Orders placed with "Pending" payment status.</p>
+                <p class="font-semibold mb-2">Payment</p>
+                <p>You'll be redirected to our secure payment page after placing your order.</p>
               </div>
               <label class="flex items-start gap-2 mb-6 cursor-pointer">
                 <input type="checkbox" id="disclaimer" class="mt-0.5">
@@ -101,9 +102,13 @@
       btn.disabled=true; btn.textContent='Placing order...';
       try {
         const items = Cart.getItems().map(i=>({productId:i.productId,quantity:i.quantity}));
-        await API.createOrder({items,addressId:selectedAddressId});
+        const data = await API.createOrder({items,addressId:selectedAddressId});
         Cart.clear();
-        document.getElementById('checkout').innerHTML = '<div class="text-center py-20"><svg class="w-16 h-16 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><h1 class="text-2xl font-bold text-gray-900 mb-3">Order Placed!</h1><p class="text-gray-500 mb-8">Your order has been submitted successfully.</p><a href="/shop" class="btn-primary px-8 py-3">Continue Shopping</a></div>';
+        if (data.order && data.order.paymentLink) {
+          window.location.href = data.order.paymentLink;
+        } else {
+          document.getElementById('checkout').innerHTML = '<div class="text-center py-20"><svg class="w-16 h-16 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><h1 class="text-2xl font-bold text-gray-900 mb-3">Order Placed!</h1><p class="text-gray-500 mb-8">Your order has been submitted successfully. We\'ll contact you with payment details.</p><a href="/shop" class="btn-primary px-8 py-3">Continue Shopping</a></div>';
+        }
       } catch(e) { btn.disabled=false; btn.textContent='Place Order'; alert(e.error||'Failed to place order'); }
     }
   </script>

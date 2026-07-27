@@ -186,4 +186,133 @@ function unwrapDataObject(resp: unknown): Record<string, unknown> {
   return {};
 }
 
+export function toSebCart(conddoData: unknown): { items: unknown[] } {
+  const d = unwrapDataObject(conddoData);
+  const cart = (d.cart ?? d) as Record<string, unknown>;
+  const items = Array.isArray(cart.items) ? cart.items : [];
+  return {
+    items: items.map((i: unknown) => {
+      const item = i as Record<string, unknown>;
+      return {
+        productId: item.productId ?? item.id,
+        nameGeneric: item.name ?? item.nameGeneric ?? "",
+        nameBrand: item.nameBrand ?? null,
+        price: typeof item.price === "number" ? item.price : Number(item.price ?? 0),
+        quantity: item.quantity ?? 1,
+        requiresPrescription: item.requiresPrescription ?? false,
+        slug: item.slug ?? item.productId,
+      };
+    }),
+  };
+}
+
+export function toSebAddressList(conddoData: unknown): { addresses: unknown[] } {
+  const d = unwrapDataObject(conddoData);
+  const items = Array.isArray(d.addresses) ? d.addresses : Array.isArray(conddoData) ? conddoData : [];
+  return { addresses: items };
+}
+
+export function toSebAddressCreated(conddoData: unknown): { success: boolean; address: unknown } {
+  const addr = unwrapDataObject(conddoData);
+  return { success: true, address: addr };
+}
+
+export function toSebPrescriptionCreated(conddoData: unknown): { success: boolean; prescription: unknown } {
+  const d = unwrapDataObject(conddoData);
+  if (d.prescription) {
+    return { success: true, prescription: d.prescription };
+  }
+  return { success: true, prescription: d };
+}
+
+export function toSebPrescriptionList(conddoData: unknown): { prescriptions: unknown[] } {
+  const d = unwrapDataObject(conddoData);
+  const items = Array.isArray(d.prescriptions) ? d.prescriptions : [];
+  return { prescriptions: items };
+}
+
+export function toSebAdminPrescriptionList(conddoData: unknown): { prescriptions: unknown[] } {
+  const items = unwrapDataArray(conddoData);
+  return {
+    prescriptions: items.map((rx: unknown) => {
+      const p = rx as Record<string, unknown>;
+      return {
+        id: p.id,
+        patientName: p.patientName ?? "",
+        fileUrl: p.fileUrl,
+        status: p.status,
+        submittedAt: p.submittedAt,
+        reviewedAt: p.reviewedAt,
+        reviewNote: p.reviewNote,
+        reviewedByName: p.reviewedByName ?? null,
+        user: {
+          fullName: p.customerName ?? "",
+          email: p.customerEmail ?? "",
+          phone: p.customerPhone ?? "",
+        },
+      };
+    }),
+  };
+}
+
+export function toSebAdminCustomerList(conddoData: unknown): { customers: unknown[] } {
+  const items = unwrapDataArray(conddoData);
+  return {
+    customers: items.map((c: unknown) => {
+      const cust = c as Record<string, unknown>;
+      const counts = (cust._count ?? cust.orderCounts ?? {}) as Record<string, unknown>;
+      return {
+        id: cust.id,
+        fullName: cust.fullName ?? cust.name ?? "",
+        email: cust.email ?? "",
+        phone: cust.phone ?? null,
+        createdAt: cust.createdAt,
+        _count: {
+          orders: counts.orders ?? 0,
+          prescriptions: counts.prescriptions ?? 0,
+        },
+      };
+    }),
+  };
+}
+
+export function toSebAdminOrderDetail(conddoData: unknown): { order: Record<string, unknown> } {
+  const d = unwrapDataObject(conddoData);
+  const order = d as Record<string, unknown>;
+  return {
+    order: {
+      id: order.id,
+      status: order.stage ?? order.status ?? "PENDING",
+      reference: order.reference,
+      subtotal: Number(order.subtotal ?? 0),
+      deliveryFee: Number(order.deliveryFee ?? 0),
+      total: Number(order.amount ?? order.total ?? 0),
+      notes: order.notes ?? null,
+      createdAt: order.createdAt,
+      paymentStatus: order.paymentStatus ?? "PENDING",
+      paymentLink: order.paymentLink ?? null,
+      items: Array.isArray(order.items) ? order.items.map((i: unknown) => {
+        const item = i as Record<string, unknown>;
+        return {
+          productId: item.productId,
+          product: { nameGeneric: item.description ?? item.nameGeneric ?? "", nameBrand: item.nameBrand ?? null },
+          unitPrice: Number(item.unitPrice ?? 0),
+          quantity: item.quantity ?? 1,
+          snapshot: item.snapshot ?? JSON.stringify({ nameGeneric: item.description ?? "", price: item.unitPrice }),
+        };
+      }) : [],
+      user: {
+        fullName: order.customerName ?? "",
+        email: order.customerEmail ?? "",
+        phone: order.customerPhone ?? null,
+      },
+      address: order.addressSnapshot ? (
+        typeof order.addressSnapshot === "string"
+          ? JSON.parse(order.addressSnapshot)
+          : order.addressSnapshot
+      ) as Record<string, unknown> : null,
+    },
+  };
+}
+
 export { CONDDO_API, TENANT_SLUG, CONDDO_SITE_KEY };
