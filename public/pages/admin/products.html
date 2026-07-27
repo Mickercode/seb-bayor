@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products | Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841',800:'#13262C',900:'#091316'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/admin-shell.js"></script>
+  <script>
+    async function render() {
+      document.getElementById('app').innerHTML = adminShell('/admin/products', '<div class="py-6"><h1 class="text-2xl font-bold text-gray-900 mb-6">Products</h1><div id="productsList"><div class="text-center py-8"><span class="spinner mx-auto"></span></div></div></div>');
+      try {
+        const data = await API.get('/api/admin/products');
+        const products = data.products || [];
+        const el = document.getElementById('productsList');
+        if (products.length===0) { el.innerHTML='<div class="text-center py-16 bg-white rounded-xl border border-gray-200"><p class="text-gray-500">No products found</p></div>'; return; }
+        el.innerHTML = `<div class="bg-white rounded-xl border border-gray-200 overflow-hidden"><div class="hidden md:block overflow-x-auto"><table class="w-full"><thead><tr class="border-b bg-gray-50"><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Product</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Category</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Price</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Stock</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Rx</th><th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th></tr></thead><tbody class="divide-y divide-gray-200">${products.map(p => `
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3"><p class="text-sm font-medium text-gray-900">${Utils.escapeHtml(p.nameGeneric)}</p>${p.nameBrand?`<p class="text-xs text-gray-500">${Utils.escapeHtml(p.nameBrand)}</p>`:''}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">${Utils.escapeHtml(p.category?.name||'')}</td>
+            <td class="px-4 py-3 text-sm font-medium text-gray-900">${Utils.formatPrice(p.price)}</td>
+            <td class="px-4 py-3"><span class="text-sm font-medium ${p.stockQty===0?'text-red-600':p.stockQty<=10?'text-amber-600':'text-gray-900'}">${p.stockQty}</span></td>
+            <td class="px-4 py-3">${p.requiresPrescription?'<span class="badge badge-red">Yes</span>':'<span class="text-xs text-gray-400">No</span>'}</td>
+            <td class="px-4 py-3"><button onclick="toggleProduct('${p.id}',${!p.isActive})" class="badge ${p.isActive?'badge-green':'badge-gray'} cursor-pointer hover:opacity-80">${p.isActive?'Active':'Hidden'}</button></td>
+          </tr>`).join('')}</tbody></table></div>
+          <div class="md:hidden divide-y divide-gray-200">${products.map(p => `
+            <div class="p-4 space-y-2">
+              <div class="flex items-start justify-between"><div><p class="font-medium text-gray-900">${Utils.escapeHtml(p.nameGeneric)}</p>${p.nameBrand?`<p class="text-xs text-gray-500">${Utils.escapeHtml(p.nameBrand)}</p>`:''}</div><button onclick="toggleProduct('${p.id}',${!p.isActive})" class="badge ${p.isActive?'badge-green':'badge-gray'} cursor-pointer">${p.isActive?'Active':'Hidden'}</button></div>
+              <div class="flex items-center justify-between text-sm"><span class="text-gray-500">${Utils.escapeHtml(p.category?.name||'')} &middot; Stock: ${p.stockQty}</span><span class="font-bold">${Utils.formatPrice(p.price)}</span></div>
+            </div>`).join('')}</div></div>`;
+      } catch { document.getElementById('productsList').innerHTML='<p class="text-red-500">Failed to load.</p>'; }
+    }
+
+    async function toggleProduct(id, isActive) {
+      try { await API.adminUpdateProduct(id, { isActive }); render(); } catch { alert('Failed'); }
+    }
+
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

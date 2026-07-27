@@ -1,0 +1,238 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Static page redirects — serve HTML from /pages/ with clean URLs
+# These run BEFORE the Next.js serverless functions
+
+# Homepage
+[[redirects]]
+  from = "/"
+  to = "/pages/index.html"
+  status = 200
+
+# Corporate
+[[redirects]]
+  from = "/about"
+  to = "/pages/about.html"
+  status = 200
+
+[[redirects]]
+  from = "/contact"
+  to = "/pages/contact.html"
+  status = 200
+
+[[redirects]]
+  from = "/faqs"
+  to = "/pages/faqs.html"
+  status = 200
+
+[[redirects]]
+  from = "/digital-health"
+  to = "/pages/digital-health.html"
+  status = 200
+
+[[redirects]]
+  from = "/services"
+  to = "/pages/services.html"
+  status = 200
+
+[[redirects]]
+  from = "/services/retail-pharmacy"
+  to = "/pages/services/retail-pharmacy.html"
+  status = 200
+
+[[redirects]]
+  from = "/services/e-pharmacy"
+  to = "/pages/services/e-pharmacy.html"
+  status = 200
+
+[[redirects]]
+  from = "/services/consultations"
+  to = "/pages/services/consultations.html"
+  status = 200
+
+[[redirects]]
+  from = "/services/drug-information"
+  to = "/pages/services/drug-information.html"
+  status = 200
+
+[[redirects]]
+  from = "/legal/terms"
+  to = "/pages/legal/terms.html"
+  status = 200
+
+[[redirects]]
+  from = "/legal/privacy"
+  to = "/pages/legal/privacy.html"
+  status = 200
+
+[[redirects]]
+  from = "/legal/disclaimer"
+  to = "/pages/legal/disclaimer.html"
+  status = 200
+
+# Auth
+[[redirects]]
+  from = "/auth/login"
+  to = "/pages/auth/login.html"
+  status = 200
+
+[[redirects]]
+  from = "/auth/register"
+  to = "/pages/auth/register.html"
+  status = 200
+
+[[redirects]]
+  from = "/auth/forgot-password"
+  to = "/pages/auth/forgot-password.html"
+  status = 200
+
+[[redirects]]
+  from = "/auth/reset-password"
+  to = "/pages/auth/reset-password.html"
+  status = 200
+
+# Shop
+[[redirects]]
+  from = "/shop"
+  to = "/pages/shop/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/shop/search"
+  to = "/pages/shop/search.html"
+  status = 200
+
+[[redirects]]
+  from = "/shop/product/*"
+  to = "/pages/shop/product.html"
+  status = 200
+
+[[redirects]]
+  from = "/shop/:category"
+  to = "/pages/shop/category.html"
+  status = 200
+
+# Cart & Checkout
+[[redirects]]
+  from = "/cart"
+  to = "/pages/cart.html"
+  status = 200
+
+[[redirects]]
+  from = "/checkout"
+  to = "/pages/checkout.html"
+  status = 200
+
+[[redirects]]
+  from = "/prescription/upload"
+  to = "/pages/prescription-upload.html"
+  status = 200
+
+[[redirects]]
+  from = "/consult"
+  to = "/pages/consult.html"
+  status = 200
+
+# Blog
+[[redirects]]
+  from = "/blog"
+  to = "/pages/blog/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/blog/*"
+  to = "/pages/blog/article.html"
+  status = 200
+
+# Customer Dashboard
+[[redirects]]
+  from = "/dashboard"
+  to = "/pages/dashboard/orders.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/orders"
+  to = "/pages/dashboard/orders.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/prescriptions"
+  to = "/pages/dashboard/prescriptions.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/addresses"
+  to = "/pages/dashboard/addresses.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/profile"
+  to = "/pages/dashboard/profile.html"
+  status = 200
+
+# Admin
+[[redirects]]
+  from = "/admin"
+  to = "/pages/admin/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/login"
+  to = "/pages/admin/login.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/orders"
+  to = "/pages/admin/orders.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/orders/*"
+  to = "/pages/admin/order-detail.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/prescriptions"
+  to = "/pages/admin/prescriptions.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/products"
+  to = "/pages/admin/products.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/products/new"
+  to = "/pages/admin/product-form.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/customers"
+  to = "/pages/admin/customers.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/users"
+  to = "/pages/admin/users.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/articles"
+  to = "/pages/admin/articles.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/articles/new"
+  to = "/pages/admin/article-form.html"
+  status = 200
+
+# API routes — pass through to Next.js serverless functions
+[[redirects]]
+  from = "/api/*"
+  to = "/api/:splat"
+  status = 200

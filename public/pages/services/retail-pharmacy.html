@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retail Pharmacy | Seb & Bayor Pharmaceutical Ltd</title>
+  <meta name="description" content="Visit Seb & Bayor's retail pharmacy for prescription dispensing, OTC medications, health screenings, and personalized medication counseling.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',50:'#E8F0F3',500:'#2F5D6C',600:'#264B57',700:'#1C3841'},mint:{DEFAULT:'#12EDA9',500:'#12EDA9',600:'#0EBE87'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body data-zone="corporate" class="bg-white">
+  <div id="nav"></div>
+  <section class="bg-gradient-to-br from-teal-600 to-teal-800 text-white section-padding py-20 md:py-28">
+    <div class="container-max">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <p class="text-teal-200 font-semibold text-sm uppercase tracking-wider mb-4">Our Services</p>
+          <h1 class="text-4xl md:text-5xl font-bold mb-6" style="font-family:var(--font-heading)">Retail Pharmacy</h1>
+          <p class="text-lg text-teal-100 leading-relaxed">In-person pharmaceutical care at our physical location. Every patient receives personalized attention from our registered pharmacists.</p>
+        </div>
+        <div class="rounded-2xl overflow-hidden"><img src="/images/pharmacy-interior.jpg" alt="Retail Pharmacy" class="w-full h-auto object-cover aspect-[4/3]" onerror="this.style.display='none'"></div>
+      </div>
+    </div>
+  </section>
+  <section class="section-padding"><div class="container-max max-w-4xl">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+      <div class="bg-gray-50 rounded-xl p-6"><h3 class="font-bold text-gray-900 mb-2">Prescription Dispensing</h3><p class="text-sm text-gray-600">Accurate dispensing with pharmacist verification, dosage guidance, and interaction checks for every prescription.</p></div>
+      <div class="bg-gray-50 rounded-xl p-6"><h3 class="font-bold text-gray-900 mb-2">OTC Medications</h3><p class="text-sm text-gray-600">Wide range of over-the-counter medications for common ailments, with pharmacist guidance on proper use.</p></div>
+      <div class="bg-gray-50 rounded-xl p-6"><h3 class="font-bold text-gray-900 mb-2">Health Monitoring</h3><p class="text-sm text-gray-600">Blood pressure, blood glucose, and BMI monitoring services available during pharmacy hours.</p></div>
+      <div class="bg-gray-50 rounded-xl p-6"><h3 class="font-bold text-gray-900 mb-2">Patient Counseling</h3><p class="text-sm text-gray-600">One-on-one medication counseling to ensure you understand your treatments, side effects, and proper usage.</p></div>
+      <div class="bg-gray-50 rounded-xl p-6"><h3 class="font-bold text-gray-900 mb-2">Health Products</h3><p class="text-sm text-gray-600">Vitamins, supplements, personal care products, baby care items, and medical devices.</p></div>
+      <div class="bg-gray-50 rounded-xl p-6"><h3 class="font-bold text-gray-900 mb-2">Wellness Programs</h3><p class="text-sm text-gray-600">Health screenings, medication therapy management, and chronic disease support programs.</p></div>
+    </div>
+    <div class="text-center"><a href="/contact" class="btn-primary text-sm px-8 py-3.5">Visit Our Pharmacy</a></div>
+  </div></section>
+  <div id="footer"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script><script src="/js/api.js"></script><script src="/js/cart.js"></script><script src="/js/components.js"></script>
+  <script>document.getElementById('nav').innerHTML=Components.corporateNav('/services');document.getElementById('footer').innerHTML=Components.footer();</script>
+</body>
+</html>

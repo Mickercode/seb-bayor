@@ -1,0 +1,36 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { proxy, toSebProductDetail } from '@/lib/conddo-proxy'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { slug: string } },
+) {
+  try {
+    const { slug } = params
+    // Conddo's inventory detail endpoint works by UUID or slug via search
+    const result = await proxy('GET', `/inventory/products?search=${encodeURIComponent(slug)}&size=1`)
+
+    if (result.status >= 400) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 },
+      )
+    }
+
+    const list = toSebProductList(result.body)
+    const product = list.products[0]
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 },
+      )
+    }
+
+    return NextResponse.json({ product })
+  } catch (error) {
+    console.error('Get product proxy error:', error)
+    return NextResponse.json({ error: 'Product not found' }, { status: 500 })
+  }
+}

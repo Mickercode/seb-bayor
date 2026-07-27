@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout | AnythingDrugs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',500:'#2F5D6C'},mint:{DEFAULT:'#12EDA9',50:'#E6FDF6',500:'#12EDA9',600:'#0EBE87'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body data-zone="shop" class="bg-gray-50">
+  <div id="nav"></div>
+  <div class="section-padding"><div class="container-max" id="checkout"></div></div>
+  <div id="footer"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script>
+    document.getElementById('nav').innerHTML = Components.shopNav();
+    document.getElementById('footer').innerHTML = Components.footer();
+    const STATES=['Abia','Abuja (FCT)','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nassarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara'];
+    let selectedAddressId=null, addresses=[], step='delivery';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const items = Cart.getItems();
+      if (items.length===0) { window.location.href='/cart'; return; }
+      try { const d = await API.getAddresses(); addresses = d.addresses||[]; } catch {}
+      render();
+    });
+
+    function render() {
+      const items = Cart.getItems();
+      const subtotal = Cart.getTotal();
+      const stateOpts = STATES.map(s=>`<option value="${s}">${s}</option>`).join('');
+
+      document.getElementById('checkout').innerHTML = `
+        <h1 class="text-2xl font-bold mb-8">Checkout</h1>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div class="lg:col-span-2">
+            <div id="error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm"></div>
+
+            ${step==='delivery'?`
+            <div class="bg-white rounded-lg p-6 shadow-sm">
+              <h2 class="text-lg font-bold mb-4">Delivery Address</h2>
+              ${addresses.length>0?`<div class="space-y-3 mb-4">${addresses.map(a=>`<label class="block p-4 border rounded-lg cursor-pointer transition-colors ${selectedAddressId===a.id?'border-mint-500 bg-mint-50':'border-gray-200 hover:border-gray-300'}"><input type="radio" name="addr" class="sr-only" onchange="selectedAddressId='${a.id}';render()" ${selectedAddressId===a.id?'checked':''}><span class="font-semibold text-sm">${Utils.escapeHtml(a.label)}</span><p class="text-sm text-gray-600 mt-1">${Utils.escapeHtml(a.street)}, ${Utils.escapeHtml(a.city)}, ${Utils.escapeHtml(a.state)}</p></label>`).join('')}</div>`:''}
+              <div id="newAddrForm" class="space-y-4">
+                <p class="text-sm font-medium text-gray-700">${addresses.length>0?'Or add new address':'Enter delivery address'}</p>
+                <input id="nStreet" placeholder="Street address *" class="form-input">
+                <div class="grid grid-cols-2 gap-4"><input id="nCity" placeholder="City *" class="form-input"><select id="nState" class="form-input"><option value="">State *</option>${stateOpts}</select></div>
+                <input id="nLandmark" placeholder="Closest landmark" class="form-input">
+              </div>
+              <button onclick="continueDelivery()" class="btn-accent w-full mt-6 py-3">Continue</button>
+            </div>`:''}
+
+            ${step==='payment'?`
+            <div class="bg-white rounded-lg p-6 shadow-sm">
+              <h2 class="text-lg font-bold mb-4">Payment</h2>
+              <div class="border border-gray-200 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-sm mb-3">Order Summary</h3>
+                ${items.map(i=>`<div class="flex justify-between text-sm py-1"><span>${Utils.escapeHtml(i.nameGeneric)} x${i.quantity}</span><span>${Utils.formatPrice(i.price*i.quantity)}</span></div>`).join('')}
+                <div class="border-t mt-3 pt-3 flex justify-between font-bold"><span>Total</span><span>${Utils.formatPrice(subtotal)}</span></div>
+              </div>
+              <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-center text-sm text-gray-600">
+                <p class="font-semibold mb-2">Payment</p><p>Payment integration coming soon. Orders placed with "Pending" payment status.</p>
+              </div>
+              <label class="flex items-start gap-2 mb-6 cursor-pointer">
+                <input type="checkbox" id="disclaimer" class="mt-0.5">
+                <span class="text-xs text-gray-600">I understand this platform does not replace professional medical advice. I agree to the <a href="/legal/terms" class="text-mint-600 underline">Terms</a> and <a href="/legal/privacy" class="text-mint-600 underline">Privacy Policy</a>.</span>
+              </label>
+              <button onclick="placeOrder()" id="placeBtn" class="btn-accent w-full py-3 disabled:opacity-50">Place Order — ${Utils.formatPrice(subtotal)}</button>
+            </div>`:''}
+          </div>
+          <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg p-6 shadow-sm sticky top-24">
+              <h3 class="font-bold mb-4">Cart (${items.length})</h3>
+              ${items.map(i=>`<div class="flex gap-3 mb-3"><div class="w-12 h-12 bg-gray-100 rounded shrink-0"></div><div class="flex-1 min-w-0"><p class="text-sm font-medium truncate">${Utils.escapeHtml(i.nameGeneric)}</p><p class="text-xs text-gray-500">Qty: ${i.quantity}</p></div><p class="text-sm font-medium">${Utils.formatPrice(i.price*i.quantity)}</p></div>`).join('')}
+              <div class="border-t pt-3 flex justify-between font-bold"><span>Total</span><span>${Utils.formatPrice(subtotal)}</span></div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    async function continueDelivery() {
+      const err = document.getElementById('error');
+      if (!selectedAddressId) {
+        const street=$('#nStreet')?.value, city=$('#nCity')?.value, state=$('#nState')?.value;
+        if (!street||!city||!state) { err.textContent='Please fill in address fields'; err.classList.remove('hidden'); return; }
+        try {
+          const d = await API.createAddress({label:'Home',street,city,state,landmark:$('#nLandmark')?.value,isDefault:true});
+          selectedAddressId = d.address.id;
+        } catch(e) { err.textContent=e.error||'Failed to save address'; err.classList.remove('hidden'); return; }
+      }
+      step='payment'; render();
+    }
+
+    async function placeOrder() {
+      if (!document.getElementById('disclaimer')?.checked) { alert('Please accept the disclaimer'); return; }
+      const btn = document.getElementById('placeBtn');
+      btn.disabled=true; btn.textContent='Placing order...';
+      try {
+        const items = Cart.getItems().map(i=>({productId:i.productId,quantity:i.quantity}));
+        await API.createOrder({items,addressId:selectedAddressId});
+        Cart.clear();
+        document.getElementById('checkout').innerHTML = '<div class="text-center py-20"><svg class="w-16 h-16 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><h1 class="text-2xl font-bold text-gray-900 mb-3">Order Placed!</h1><p class="text-gray-500 mb-8">Your order has been submitted successfully.</p><a href="/shop" class="btn-primary px-8 py-3">Continue Shopping</a></div>';
+      } catch(e) { btn.disabled=false; btn.textContent='Place Order'; alert(e.error||'Failed to place order'); }
+    }
+  </script>
+</body>
+</html>

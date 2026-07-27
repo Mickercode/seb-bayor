@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   CORPORATE ZONE — Seb & Bayor
+   ============================================ */
+:root,
+[data-zone="corporate"] {
+  --color-primary: #2F5D6C;
+  --color-primary-fg: #FFFFFF;
+  --color-accent: #12EDA9;
+  --color-accent-fg: #0A0A0A;
+  --font-heading: 'Georgia', 'Times New Roman', serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --radius: 6px;
+  --bg-surface: #F4F4F4;
+  --bg-page: #FFFFFF;
+}
+
+/* ============================================
+   SHOP ZONE — AnythingDrugs
+   ============================================ */
+[data-zone="shop"] {
+  --color-primary: #12EDA9;
+  --color-primary-fg: #0A0A0A;
+  --color-accent: #2F5D6C;
+  --color-accent-fg: #FFFFFF;
+  --font-heading: 'Inter', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --radius: 10px;
+  --bg-surface: #FFFFFF;
+  --bg-page: #FFFFFF;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+
+  body {
+    @apply bg-white text-gray-900 antialiased;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 font-semibold text-sm transition-all duration-200;
+    background-color: var(--color-primary);
+    color: var(--color-primary-fg);
+    border-radius: var(--radius);
+  }
+
+  .btn-primary:hover {
+    @apply opacity-90;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center px-6 py-3 font-semibold text-sm transition-all duration-200;
+    background-color: var(--color-accent);
+    color: var(--color-accent-fg);
+    border-radius: var(--radius);
+  }
+
+  .btn-accent:hover {
+    @apply opacity-90;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center px-6 py-3 font-semibold text-sm border-2 transition-all duration-200;
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    border-radius: var(--radius);
+  }
+
+  .btn-outline:hover {
+    background-color: var(--color-primary);
+    color: var(--color-primary-fg);
+  }
+
+  .section-padding {
+    @apply px-4 py-16 md:px-8 lg:px-16 xl:px-24;
+  }
+
+  .container-max {
+    @apply max-w-7xl mx-auto;
+  }
+}

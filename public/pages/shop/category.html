@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Category | AnythingDrugs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{teal:{DEFAULT:'#2F5D6C',500:'#2F5D6C'},mint:{DEFAULT:'#12EDA9',500:'#12EDA9',600:'#0EBE87'}}}}}</script>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body data-zone="shop" class="bg-white">
+  <div id="nav"></div>
+  <section class="section-padding"><div class="container-max">
+    <nav class="text-sm text-gray-500 mb-6"><a href="/shop" class="hover:text-mint-600">Shop</a> &rsaquo; <span id="catName" class="text-gray-900 font-medium"></span></nav>
+    <h1 id="catTitle" class="text-2xl font-bold text-gray-900 mb-8"></h1>
+    <div id="products" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"><div class="col-span-full text-center py-8"><span class="spinner mx-auto"></span></div></div>
+  </div></section>
+  <div id="footer"></div>
+  <script src="/js/transitions.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/components.js"></script>
+  <script>
+    document.getElementById('nav').innerHTML = Components.shopNav();
+    document.getElementById('footer').innerHTML = Components.footer();
+    const slug = window.location.pathname.split('/').filter(Boolean).pop();
+    async function load() {
+      try {
+        const data = await API.getProducts('category=' + slug);
+        const prods = data.products || [];
+        document.getElementById('catName').textContent = prods[0]?.category?.name || slug;
+        document.getElementById('catTitle').textContent = prods[0]?.category?.name || slug;
+        document.title = (prods[0]?.category?.name || slug) + ' | AnythingDrugs';
+        if (prods.length === 0) { document.getElementById('products').innerHTML = '<div class="col-span-full text-center py-16 text-gray-500">No products in this category yet.</div>'; return; }
+        document.getElementById('products').innerHTML = prods.map(p => `
+          <div class="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+            <a href="/shop/product/${p.slug}"><div class="relative aspect-square bg-gray-100 flex items-center justify-center"><span class="text-xs text-gray-400">No image</span>${p.requiresPrescription?'<span class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Rx</span>':''}</div></a>
+            <div class="p-3 md:p-4 flex flex-col flex-1">
+              <a href="/shop/product/${p.slug}"><h3 class="text-sm font-semibold text-gray-900 mb-0.5">${Utils.escapeHtml(p.nameGeneric)}</h3>${p.nameBrand?`<p class="text-xs text-gray-500 mb-2">${Utils.escapeHtml(p.nameBrand)}</p>`:''}</a>
+              <p class="text-base font-bold text-gray-900 mt-auto mb-3">${Utils.formatPrice(p.price)}</p>
+              <button onclick="Cart.add({productId:'${p.id}',nameGeneric:'${p.nameGeneric.replace(/'/g,"\\'")}',nameBrand:${p.nameBrand?`'${p.nameBrand.replace(/'/g,"\\'")}'`:'null'},price:${p.price},requiresPrescription:${p.requiresPrescription},slug:'${p.slug}'});this.textContent='Added!';setTimeout(()=>this.textContent='Add to Cart',1500)" class="btn-primary text-xs w-full py-2">Add to Cart</button>
+            </div>
+          </div>`).join('');
+      } catch { document.getElementById('products').innerHTML = '<p class="text-red-500">Failed to load.</p>'; }
+    }
+    document.addEventListener('DOMContentLoaded', load);
+  </script>
+</body>
+</html>
