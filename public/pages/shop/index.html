@@ -36,13 +36,33 @@
     document.getElementById('nav').innerHTML = Components.shopNav();
     document.getElementById('footer').innerHTML = Components.footer();
 
+    function productImageHTML(p) {
+      const imgUrl = p.displayImage || (Array.isArray(p.images) && p.images.length > 0
+        ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url)
+        : null);
+      const rx = p.requiresPrescription
+        ? '<span class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Rx</span>'
+        : '';
+      if (imgUrl) {
+        return '<div class="relative aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">'
+          + '<img src="' + imgUrl.replace(/"/g, '&quot;') + '" alt="" class="w-full h-full object-cover" onerror="imgError(this, \'No image\')">'
+          + rx + '</div>';
+      }
+      return '<div class="relative aspect-square bg-gray-100 flex items-center justify-center"><span class="text-xs text-gray-400">No image</span>' + rx + '</div>';
+    }
+
+    function imgError(el, fallback) {
+      el.style.display = 'none';
+      el.parentElement.innerHTML = '<span class="text-xs text-gray-400">' + fallback + '</span>';
+    }
+
     async function load() {
       try {
         const [catData, prodData] = await Promise.all([API.getCategories(), API.getProducts('featured=1')]);
         document.getElementById('categories').innerHTML = (catData.categories||[]).map(c => `<a href="/shop/${c.slug}" class="group relative overflow-hidden rounded-xl min-h-[160px] md:min-h-[200px] bg-teal-600 flex items-end p-4 hover:scale-[1.02] transition-transform"><span class="text-sm md:text-base font-bold text-white">${Utils.escapeHtml(c.name)}</span></a>`).join('');
         document.getElementById('products').innerHTML = (prodData.products||[]).map(p => `
           <div class="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
-            <a href="/shop/product/${p.slug}" class="block"><div class="relative aspect-square bg-gray-100 flex items-center justify-center"><span class="text-xs text-gray-400">No image</span>${p.requiresPrescription?'<span class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Rx</span>':''}</div></a>
+            <a href="/shop/product/${p.slug}" class="block">${productImageHTML(p)}</a>
             <div class="p-3 md:p-4 flex flex-col flex-1">
               <a href="/shop/product/${p.slug}"><h3 class="text-sm font-semibold text-gray-900 mb-0.5 line-clamp-2">${Utils.escapeHtml(p.nameGeneric)}</h3>${p.nameBrand?`<p class="text-xs text-gray-500 mb-2">${Utils.escapeHtml(p.nameBrand)}</p>`:''}</a>
               <p class="text-base font-bold text-gray-900 mt-auto mb-3">${Utils.formatPrice(p.price)}</p>

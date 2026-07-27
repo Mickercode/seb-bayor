@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { proxy, toSebProductList } from '@/lib/conddo-proxy'
+import { getBestProductImage } from '@/lib/image-migration'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,12 +21,18 @@ export async function GET(
     }
 
     const list = toSebProductList(result.body)
-    const product = list.products[0]
+    const product = list.products[0] as Record<string, unknown> | undefined
     if (!product) {
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 },
       )
+    }
+
+    // Migrate the first product image from Conddo Cloudinary to SebBayor Cloudinary
+    const migratedImage = await getBestProductImage(product.images)
+    if (migratedImage) {
+      product.displayImage = migratedImage
     }
 
     return NextResponse.json({ product })

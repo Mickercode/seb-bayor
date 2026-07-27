@@ -23,6 +23,58 @@
     const slug = window.location.pathname.split('/').filter(Boolean).pop();
     let qty = 1;
 
+    function getImageUrl(p) {
+      // Check displayImage first (migrated on server), then images array
+      if (p.displayImage) return p.displayImage;
+      if (Array.isArray(p.images) && p.images.length > 0) {
+        const first = p.images[0];
+        if (typeof first === 'string') return first;
+        if (first && first.url) return first.url;
+      }
+      // Check legacy fields
+      if (p.imageUrl) return p.imageUrl;
+      if (p.image) return p.image;
+      return null;
+    }
+
+    function safeUrl(url) {
+      return url ? url.replace(/"/g, '&quot;') : '';
+    }
+
+    function imageGalleryHTML(p) {
+      const mainImg = getImageUrl(p);
+      const allImgs = Array.isArray(p.images) ? p.images.map(i => typeof i === 'string' ? i : i.url).filter(Boolean) : [];
+      if (mainImg) allImgs.unshift(mainImg);
+      const unique = [...new Set(allImgs)];
+
+      if (unique.length === 0) {
+        return '<div class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center mb-4"><span class="text-gray-300">Product Image</span></div>';
+      }
+
+      let html = '<div class="mb-4">';
+      html += '<div class="aspect-square bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">';
+      html += '<img id="mainImage" src="' + safeUrl(unique[0]) + '" alt="Product Image" class="w-full h-full object-cover" onerror="imgDetailError(this)">';
+      html += '</div>';
+      if (unique.length > 1) {
+        html += '<div class="flex gap-2 mt-3 overflow-x-auto">';
+        unique.forEach(function(u) {
+          html += '<button onclick="switchMainImage(\'' + safeUrl(u) + '\')" class="w-16 h-16 rounded-lg border-2 border-gray-200 overflow-hidden shrink-0 hover:border-mint-500 transition-colors"><img src="' + safeUrl(u) + '" alt="" class="w-full h-full object-cover" onerror="this.style.display=\'none\'"></button>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function imgDetailError(el) {
+      el.style.display = 'none';
+      el.parentElement.innerHTML = '<span class="text-gray-300">Product Image</span>';
+    }
+
+    function switchMainImage(url) {
+      document.getElementById('mainImage').src = url;
+    }
+
     async function load() {
       try {
         const data = await API.getProduct(slug);
@@ -41,7 +93,7 @@
             <span class="text-gray-900 font-medium">${Utils.escapeHtml(p.nameGeneric)}</span>
           </nav>
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-            <div><div class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center mb-4"><span class="text-gray-300">Product Image</span></div></div>
+            <div>${imageGalleryHTML(p)}</div>
             <div>
               <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-1">${Utils.escapeHtml(p.nameGeneric)}</h1>
               ${p.nameBrand?`<p class="text-sm text-gray-400 mb-4">${Utils.escapeHtml(p.nameBrand)}</p>`:''}
