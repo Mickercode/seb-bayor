@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { proxy, toSebProductDetail } from '@/lib/conddo-proxy'
+import { proxy, toSebProductList } from '@/lib/conddo-proxy'
 
 export const dynamic = 'force-dynamic'
 

@@ -50,7 +50,7 @@ export async function proxy(
 
 export function toSebProductList(conddoData: unknown): { products: unknown[] } {
   const items = unwrapDataArray(conddoData);
-  return { products: items.map(toSebProduct) };
+  return { products: items.map((i) => toSebProduct(i as Record<string, unknown>)) };
 }
 
 export function toSebProductDetail(conddoData: unknown): { product: unknown } {
@@ -85,13 +85,16 @@ function toSebProduct(p: Record<string, unknown>): Record<string, unknown> {
 export function toSebCategoryList(conddoData: unknown): { categories: unknown[] } {
   const items = unwrapDataArray(conddoData);
   return {
-    categories: items.map((c: Record<string, unknown>) => ({
-      id: c.id,
-      name: c.name,
-      slug: (c.name as string)?.toLowerCase().replace(/\s+/g, "-") ?? "",
-      icon: c.icon ?? null,
-      productCount: c.productCount ?? 0,
-    })),
+    categories: items.map((i) => {
+      const c = i as Record<string, unknown>;
+      return {
+        id: c.id,
+        name: c.name,
+        slug: (c.name as string)?.toLowerCase().replace(/\s+/g, "-") ?? "",
+        icon: c.icon ?? null,
+        productCount: c.productCount ?? 0,
+      };
+    }),
   };
 }
 

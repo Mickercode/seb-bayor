@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { proxy, toSebOrderCreated } from '@/lib/conddo-proxy'
+import { proxy } from '@/lib/conddo-proxy'
 import { getAdminToken } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
@@ -24,8 +24,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform Conddo order shape to SebBayor format
-    const items = (result.body as Record<string, unknown>)?.data as unknown[] ?? []
-    const orders = items.map((o: Record<string, unknown>) => ({
+    const body = result.body as Record<string, unknown> | null
+    const items = (body?.data ?? []) as Record<string, unknown>[]
+    const orders = items.map((o) => ({
       id: o.id,
       reference: o.reference,
       customerName: o.customerName,
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       stage: o.stage,
       amount: o.amount,
       createdAt: o.createdAt,
-      itemCount: (o as Record<string, unknown>).items?.length ?? 0,
+      itemCount: (o.items as unknown[])?.length ?? 0,
     }))
 
     return NextResponse.json({ orders })
