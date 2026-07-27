@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { publicProxy, hasSiteKey } from '@/lib/conddo-proxy'
 import { prisma } from '@/lib/prisma'
 import { verifyPassword, signToken } from '@/lib/auth'
 
@@ -16,6 +17,54 @@ export async function POST(request: Request) {
       )
     }
 
+    // ── If site key configured, proxy to Conddo's public customer auth ──
+    if (hasSiteKey) {
+      const result = await publicProxy('POST', '/auth/login', {
+        email: email.toLowerCase().trim(),
+        password,
+      })
+
+      if (result.status >= 400) {
+        return NextResponse.json(
+          { error: 'Invalid email or password.' },
+          { status: 401 }
+        )
+      }
+
+      const respData = result.body as Record<string, unknown>
+      const token = respData?.token as string
+      const customer = respData?.customer as Record<string, unknown> ?? {}
+
+      if (!token) {
+        return NextResponse.json(
+          { error: 'Invalid email or password.' },
+          { status: 401 }
+        )
+      }
+
+      const response = NextResponse.json({
+        success: true,
+        user: {
+          id: customer.id,
+          email: customer.email,
+          fullName: customer.fullName,
+          phone: customer.phone,
+          role: 'PATIENT',
+        },
+      })
+
+      response.cookies.set('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7,
+        path: '/',
+      })
+
+      return response
+    }
+
+    // ── Fallback: local SQLite login (legacy) ──
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     })
@@ -56,7 +105,7 @@ export async function POST(request: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     })
 

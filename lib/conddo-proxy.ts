@@ -13,6 +13,11 @@
 
 const CONDDO_API = process.env.CONDDO_API_URL || "https://api.getconddo.com";
 const TENANT_SLUG = process.env.CONDDO_TENANT_SLUG || "";
+const CONDDO_SITE_KEY = process.env.CONDDO_SITE_KEY || "";
+
+// Whether the site key is configured — determines if customer auth proxies
+// go through Conddo's public API or fall back to local SQLite.
+export const hasSiteKey = CONDDO_SITE_KEY.length > 0;
 
 export interface ProxyResult {
   status: number;
@@ -32,6 +37,43 @@ export async function proxy(
   }
   if (bearer) {
     headers["authorization"] = `Bearer ${bearer}`;
+  }
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  let responseBody: unknown;
+  const text = await res.text();
+  try {
+    responseBody = text ? JSON.parse(text) : {};
+  } catch {
+    responseBody = { raw: text };
+  }
+  return { status: res.status, body: responseBody };
+}
+
+/**
+ * Proxies a request to Conddo's public API (requires X-Conddo-Site-Key header).
+ * Used for customer auth — register, login, me, etc.
+ */
+export async function publicProxy(
+  method: string,
+  path: string,
+  body?: unknown,
+  customerBearer?: string | null,
+): Promise<ProxyResult> {
+  const slug = TENANT_SLUG;
+  const url = `${CONDDO_API}/api/v1/public/${slug}${path}`;
+  const headers: Record<string, string> = {
+    accept: "application/json",
+    "X-Conddo-Site-Key": CONDDO_SITE_KEY,
+  };
+  if (body !== undefined) {
+    headers["content-type"] = "application/json";
+  }
+  if (customerBearer) {
+    headers["authorization"] = `Bearer ${customerBearer}`;
   }
   const res = await fetch(url, {
     method,
@@ -144,4 +186,4 @@ function unwrapDataObject(resp: unknown): Record<string, unknown> {
   return {};
 }
 
-export { CONDDO_API, TENANT_SLUG };
+export { CONDDO_API, TENANT_SLUG, CONDDO_SITE_KEY };
